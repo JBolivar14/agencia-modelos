@@ -1,0 +1,450 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from '../utils/toast';
+import './FormularioModelo.css';
+
+function FormularioModelo() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const isEdit = !!id;
+  
+  const [loading, setLoading] = useState(false);
+  const [loadingModelo, setLoadingModelo] = useState(isEdit);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    edad: '',
+    altura: '',
+    medidas: '',
+    ciudad: '',
+    foto: '',
+    descripcion: '',
+    activa: true
+  });
+  const [fotos, setFotos] = useState([]);
+  const [nuevaFoto, setNuevaFoto] = useState('');
+
+  useEffect(() => {
+    if (isEdit) {
+      cargarModelo();
+    }
+  }, [id]);
+
+  const cargarModelo = async () => {
+    try {
+      setLoadingModelo(true);
+      const response = await fetch(`/api/admin/modelos/${id}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success || !data.modelo) {
+        throw new Error(data.message || 'Error al obtener modelo');
+      }
+
+      const modelo = data.modelo;
+      setFormData({
+        nombre: modelo.nombre || '',
+        apellido: modelo.apellido || '',
+        email: modelo.email || '',
+        telefono: modelo.telefono || '',
+        edad: modelo.edad || '',
+        altura: modelo.altura || '',
+        medidas: modelo.medidas || '',
+        ciudad: modelo.ciudad || '',
+        foto: modelo.foto || '',
+        descripcion: modelo.descripcion || '',
+        activa: modelo.activa !== false
+      });
+
+      // Cargar fotos
+      if (modelo.fotos && Array.isArray(modelo.fotos)) {
+        setFotos(modelo.fotos.map(f => (typeof f === 'string' ? f : f.url)).filter(Boolean));
+      }
+    } catch (error) {
+      console.error('Error cargando modelo:', error);
+      toast.error(error.message || 'Error cargando modelo');
+      navigate('/admin');
+    } finally {
+      setLoadingModelo(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const agregarFoto = () => {
+    if (nuevaFoto.trim()) {
+      setFotos(prev => [...prev, nuevaFoto.trim()]);
+      setNuevaFoto('');
+    }
+  };
+
+  const eliminarFoto = (index) => {
+    setFotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const moverFoto = (index, direction) => {
+    if (direction === 'up' && index > 0) {
+      const nuevasFotos = [...fotos];
+      [nuevasFotos[index - 1], nuevasFotos[index]] = [nuevasFotos[index], nuevasFotos[index - 1]];
+      setFotos(nuevasFotos);
+    } else if (direction === 'down' && index < fotos.length - 1) {
+      const nuevasFotos = [...fotos];
+      [nuevasFotos[index], nuevasFotos[index + 1]] = [nuevasFotos[index + 1], nuevasFotos[index]];
+      setFotos(nuevasFotos);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const url = isEdit 
+        ? `/api/admin/modelos/${id}`
+        : '/api/admin/modelos';
+      
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          ...formData,
+          fotos: fotos
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(isEdit ? 'Modelo actualizado exitosamente' : 'Modelo creado exitosamente');
+        navigate('/admin', { state: { activeTab: 'modelos' } });
+      } else {
+        toast.error(data.message || 'Error al guardar modelo');
+      }
+    } catch (error) {
+      console.error('Error guardando modelo:', error);
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        toast.error(error.message || 'Error al guardar modelo');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loadingModelo) {
+    return (
+      <div className="formulario-modelo-page">
+        <div className="loading-container">
+          <div className="loading"></div>
+          <p>Cargando modelo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="formulario-modelo-page">
+      <div className="container">
+        <div className="card formulario-card">
+          <div className="formulario-header">
+            <h1>{isEdit ? '✏️ Editar Modelo' : '➕ Nuevo Modelo'}</h1>
+            <button
+              onClick={() => navigate('/admin', { state: { activeTab: 'modelos' } })}
+              className="btn-back"
+            >
+              ← Volver al Admin
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="form-grid">
+              {/* Información Básica */}
+              <div className="form-section">
+                <h2>Información Básica</h2>
+                
+                <div className="form-group">
+                  <label htmlFor="nombre">Nombre *</label>
+                  <input
+                    type="text"
+                    id="nombre"
+                    name="nombre"
+                    required
+                    value={formData.nombre}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="apellido">Apellido</label>
+                  <input
+                    type="text"
+                    id="apellido"
+                    name="apellido"
+                    value={formData.apellido}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="email">Email</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="telefono">Teléfono</label>
+                  <input
+                    type="tel"
+                    id="telefono"
+                    name="telefono"
+                    value={formData.telefono}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+
+              {/* Características Físicas */}
+              <div className="form-section">
+                <h2>Características Físicas</h2>
+                
+                <div className="form-group">
+                  <label htmlFor="edad">Edad</label>
+                  <input
+                    type="number"
+                    id="edad"
+                    name="edad"
+                    min="16"
+                    max="99"
+                    value={formData.edad}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="altura">Altura</label>
+                  <input
+                    type="text"
+                    id="altura"
+                    name="altura"
+                    placeholder="Ej: 175 cm"
+                    value={formData.altura}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="medidas">Medidas</label>
+                  <input
+                    type="text"
+                    id="medidas"
+                    name="medidas"
+                    placeholder="Ej: 90-60-90"
+                    value={formData.medidas}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="ciudad">Ciudad</label>
+                  <input
+                    type="text"
+                    id="ciudad"
+                    name="ciudad"
+                    value={formData.ciudad}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Foto Principal */}
+            <div className="form-section">
+              <h2>Foto Principal</h2>
+              <div className="form-group">
+                <label htmlFor="foto">URL de Foto Principal</label>
+                <input
+                  type="url"
+                  id="foto"
+                  name="foto"
+                  placeholder="https://ejemplo.com/foto.jpg"
+                  value={formData.foto}
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+                {formData.foto && (
+                  <div className="foto-preview">
+                    <img src={formData.foto} alt="Preview" onError={(e) => e.target.style.display = 'none'} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Galería de Fotos */}
+            <div className="form-section">
+              <h2>Galería de Fotos</h2>
+              
+              <div className="fotos-input-group">
+                <input
+                  type="url"
+                  placeholder="URL de foto (https://ejemplo.com/foto.jpg)"
+                  value={nuevaFoto}
+                  onChange={(e) => setNuevaFoto(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), agregarFoto())}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={agregarFoto}
+                  className="btn-add-foto"
+                  disabled={loading || !nuevaFoto.trim()}
+                >
+                  ➕ Agregar
+                </button>
+              </div>
+
+              {fotos.length > 0 && (
+                <div className="fotos-list">
+                  {fotos.map((foto, index) => (
+                    <div key={index} className="foto-item">
+                      <div className="foto-preview-small">
+                        <img src={foto} alt={`Foto ${index + 1}`} onError={(e) => e.target.style.display = 'none'} />
+                      </div>
+                      <div className="foto-url">{foto}</div>
+                      <div className="foto-actions">
+                        <button
+                          type="button"
+                          onClick={() => moverFoto(index, 'up')}
+                          disabled={index === 0 || loading}
+                          className="btn-move"
+                          title="Mover arriba"
+                        >
+                          ⬆️
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moverFoto(index, 'down')}
+                          disabled={index === fotos.length - 1 || loading}
+                          className="btn-move"
+                          title="Mover abajo"
+                        >
+                          ⬇️
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => eliminarFoto(index)}
+                          disabled={loading}
+                          className="btn-delete-foto"
+                          title="Eliminar"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Descripción y Estado */}
+            <div className="form-section">
+              <h2>Información Adicional</h2>
+              
+              <div className="form-group">
+                <label htmlFor="descripcion">Descripción</label>
+                <textarea
+                  id="descripcion"
+                  name="descripcion"
+                  rows="4"
+                  placeholder="Descripción del modelo..."
+                  value={formData.descripcion}
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="activa"
+                    checked={formData.activa}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                  <span>Modelo activa (visible en la galería pública)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Botones de Acción */}
+            <div className="form-actions">
+              <button
+                type="button"
+                onClick={() => navigate('/admin', { state: { activeTab: 'modelos' } })}
+                className="btn-cancel"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-submit"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span className="loader"></span>
+                    {isEdit ? 'Guardando...' : 'Creando...'}
+                  </>
+                ) : (
+                  isEdit ? '💾 Guardar Cambios' : '✨ Crear Modelo'
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default FormularioModelo;

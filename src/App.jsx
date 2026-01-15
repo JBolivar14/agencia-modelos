@@ -5,6 +5,7 @@ import ModeloDetalle from './pages/ModeloDetalle';
 import Contacto from './pages/Contacto';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
+import FormularioModelo from './pages/FormularioModelo';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -28,7 +29,7 @@ function App() {
           path="admin/modelos/nuevo"
           element={
             <ProtectedRoute>
-              <Admin />
+              <FormularioModelo />
             </ProtectedRoute>
           }
         />
@@ -36,7 +37,7 @@ function App() {
           path="admin/modelos/:id"
           element={
             <ProtectedRoute>
-              <Admin />
+              <FormularioModelo />
             </ProtectedRoute>
           }
         />

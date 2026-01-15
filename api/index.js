@@ -244,6 +244,41 @@ app.get('/api/admin/modelos', requireAuth, async (req, res) => {
   }
 });
 
+// API - Obtener modelo individual (admin - para editar)
+app.get('/api/admin/modelos/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const modeloId = parseInt(id);
+    
+    if (isNaN(modeloId) || modeloId <= 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de modelo inválido' 
+      });
+    }
+    
+    const modelo = await modelosDB.getById(modeloId);
+    
+    if (!modelo) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Modelo no encontrada' 
+      });
+    }
+    
+    const fotos = await modeloFotosDB.getByModeloId(modeloId);
+    modelo.fotos = fotos || [];
+    
+    res.json({ success: true, modelo });
+  } catch (error) {
+    console.error('Error obteniendo modelo:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error obteniendo modelo. Por favor, intenta más tarde.' 
+    });
+  }
+});
+
 // API - Crear modelo (admin)
 app.post('/api/admin/modelos', requireAuth, validateModelo, async (req, res) => {
   try {

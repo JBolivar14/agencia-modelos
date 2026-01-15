@@ -14,6 +14,12 @@ function Admin() {
 
   useEffect(() => {
     checkAuth();
+    
+    // Si hay un estado de navegación con activeTab, activarlo
+    const state = window.history.state?.usr;
+    if (state?.activeTab) {
+      setActiveTab(state.activeTab);
+    }
   }, []);
 
   useEffect(() => {
