@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ModeloDetalle.css';
 
@@ -39,6 +39,10 @@ function ModeloDetalle() {
         throw new Error(data.message || 'Error al obtener modelo');
       }
       
+      // Debug: verificar que las fotos se reciben correctamente
+      console.log('Modelo recibido:', data.modelo);
+      console.log('Fotos recibidas:', data.modelo.fotos);
+      
       setModelo(data.modelo);
     } catch (err) {
       console.error('Error cargando modelo:', err);
@@ -52,8 +56,33 @@ function ModeloDetalle() {
     }
   };
 
-  const todasLasFotos = modelo?.fotos?.map(f => f.url) || (modelo?.foto ? [modelo.foto] : []);
+  // Obtener todas las fotos: primero de modelo_fotos, luego foto principal como fallback
+  const todasLasFotos = useMemo(() => {
+    if (!modelo) return [];
+    
+    // Si hay fotos en el array de fotos
+    if (modelo.fotos && Array.isArray(modelo.fotos) && modelo.fotos.length > 0) {
+      return modelo.fotos.map(f => (typeof f === 'string' ? f : f.url)).filter(Boolean);
+    }
+    
+    // Si no hay fotos pero hay foto principal
+    if (modelo.foto) {
+      return [modelo.foto];
+    }
+    
+    return [];
+  }, [modelo]);
+  
   const fotoPrincipal = todasLasFotos[fotoPrincipalIndex] || null;
+  
+  // Debug
+  useEffect(() => {
+    if (modelo) {
+      console.log('Total fotos disponibles:', todasLasFotos.length);
+      console.log('Foto principal index:', fotoPrincipalIndex);
+      console.log('Foto principal URL:', fotoPrincipal);
+    }
+  }, [modelo, todasLasFotos, fotoPrincipalIndex, fotoPrincipal]);
 
   const cambiarFotoPrincipal = (index) => {
     if (index >= 0 && index < todasLasFotos.length) {
