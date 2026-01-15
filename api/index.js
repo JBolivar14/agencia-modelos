@@ -360,34 +360,26 @@ app.post('/api/contacto', validateContacto, async (req, res) => {
   try {
     const { nombre, email, telefono, empresa, mensaje } = req.body;
     
-    try {
-      const result = await contactosDB.create({ 
-        nombre, 
-        email, 
-        telefono, 
-        empresa, 
-        mensaje 
-      });
-      
-      const contacto = await contactosDB.getById(result.lastID);
-      
-      res.json({ 
-        success: true, 
-        message: '¡Gracias! Tu información ha sido recibida.',
-        contacto
-      });
-    } catch (dbError) {
-      console.error('Error en base de datos:', dbError);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Error guardando contacto en la base de datos' 
-      });
-    }
+    const result = await contactosDB.create({ 
+      nombre, 
+      email, 
+      telefono, 
+      empresa, 
+      mensaje 
+    });
+    
+    const contacto = await contactosDB.getById(result.lastID);
+    
+    res.json({ 
+      success: true, 
+      message: '¡Gracias! Tu información ha sido recibida.',
+      contacto
+    });
   } catch (error) {
-    console.error('Error en endpoint /api/contacto:', error);
+    console.error('Error guardando contacto:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error procesando la solicitud. Por favor, intenta más tarde.' 
+      message: 'Error guardando contacto. Por favor, intenta más tarde.' 
     });
   }
 });

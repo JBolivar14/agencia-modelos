@@ -26,10 +26,11 @@ function ModeloDetalle() {
       const response = await fetch(`/api/modelos/${id}`);
       
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         if (response.status === 404) {
-          throw new Error('Modelo no encontrada');
+          throw new Error(errorData.message || 'Modelo no encontrada');
         }
-        throw new Error(`Error HTTP: ${response.status}`);
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
       }
       
       const data = await response.json();
@@ -41,7 +42,11 @@ function ModeloDetalle() {
       setModelo(data.modelo);
     } catch (err) {
       console.error('Error cargando modelo:', err);
-      setError(err.message || 'Error cargando información de la modelo. Por favor, intenta más tarde.');
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        setError(err.message || 'Error cargando información de la modelo. Por favor, intenta más tarde.');
+      }
     } finally {
       setLoading(false);
     }

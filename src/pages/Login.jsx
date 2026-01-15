@@ -36,8 +36,14 @@ function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ username, password }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -51,7 +57,11 @@ function Login() {
       }
     } catch (error) {
       console.error('Error en login:', error);
-      toast.error('Error de conexión. Por favor, intenta nuevamente.');
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        toast.error(error.message || 'Error de conexión. Por favor, intenta nuevamente.');
+      }
     } finally {
       setLoading(false);
     }

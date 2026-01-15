@@ -46,6 +46,12 @@ function Admin() {
       const response = await fetch('/api/admin/modelos', {
         credentials: 'include',
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+      
       const data = await response.json();
       if (data.success) {
         setModelos(data.modelos || []);
@@ -54,7 +60,11 @@ function Admin() {
       }
     } catch (error) {
       console.error('Error cargando modelos:', error);
-      toast.error('Error cargando modelos');
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        toast.error(error.message || 'Error cargando modelos');
+      }
     } finally {
       setLoading(false);
     }
@@ -66,6 +76,12 @@ function Admin() {
       const response = await fetch('/api/admin/contactos', {
         credentials: 'include',
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+      
       const data = await response.json();
       if (data.success) {
         setContactos(data.contactos || []);
@@ -74,7 +90,11 @@ function Admin() {
       }
     } catch (error) {
       console.error('Error cargando contactos:', error);
-      toast.error('Error cargando contactos');
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        toast.error(error.message || 'Error cargando contactos');
+      }
     } finally {
       setLoading(false);
     }
@@ -86,6 +106,12 @@ function Admin() {
         method: 'POST',
         credentials: 'include',
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+      
       const data = await response.json();
       if (data.success) {
         setQrData(data);
@@ -95,7 +121,11 @@ function Admin() {
       }
     } catch (error) {
       console.error('Error generando QR:', error);
-      toast.error('Error generando QR');
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        toast.error(error.message || 'Error generando QR');
+      }
     }
   };
 

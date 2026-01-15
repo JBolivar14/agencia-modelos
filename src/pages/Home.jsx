@@ -24,7 +24,8 @@ function Home() {
       const response = await fetch('/api/modelos');
       
       if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
       }
       
       const data = await response.json();
@@ -40,7 +41,11 @@ function Home() {
       }
     } catch (err) {
       console.error('Error cargando modelos:', err);
-      setError(err.message || 'Error cargando modelos. Por favor, intenta más tarde.');
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        setError(err.message || 'Error cargando modelos. Por favor, intenta más tarde.');
+      }
     } finally {
       setLoading(false);
     }

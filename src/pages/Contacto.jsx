@@ -33,6 +33,11 @@ function Contacto() {
         body: JSON.stringify(formData),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {
@@ -50,7 +55,11 @@ function Contacto() {
       }
     } catch (error) {
       console.error('Error en contacto:', error);
-      toast.error('Error de conexión. Por favor, intenta nuevamente.');
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        toast.error('Error de conexión. Verifica tu conexión a internet.');
+      } else {
+        toast.error(error.message || 'Error de conexión. Por favor, intenta nuevamente.');
+      }
     } finally {
       setLoading(false);
     }

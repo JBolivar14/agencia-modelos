@@ -11,6 +11,7 @@
     "start": "node server.js",
     "seed": "node seed-data.js",
     "add-fotos": "node agregar-fotos-modelos.js",
+    "generar-modelos": "node scripts/generar-modelos-prueba.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch"
   },

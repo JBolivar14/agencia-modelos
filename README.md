@@ -2,6 +2,13 @@
 
 Aplicación web completa desarrollada con **React + Vite** y **Node.js + Express** para gestionar y mostrar un catálogo de modelos profesionales. Incluye panel de administración, galería pública, páginas de detalle y sistema de contacto mediante QR.
 
+## 📚 Documentación Adicional
+
+- **`VARIABLES_ENTORNO_VERCEL.md`** - Guía completa de variables de entorno para Vercel
+- **`GUIA_TESTING_VERCEL.md`** - Guía paso a paso para testear la aplicación en Vercel
+- **`scripts/generar-modelos-prueba.js`** - Script Node.js para generar modelos de prueba (ejecutar desde terminal)
+- **`scripts/insertar-modelos-prueba.sql`** - Script SQL para insertar modelos directamente en Supabase SQL Editor
+
 ## 🚀 Características
 
 ### Público
@@ -175,10 +182,11 @@ El proyecto soporta ambas bases de datos automáticamente:
 ## 📝 Scripts Disponibles
 
 ```bash
-npm run dev      # Desarrollo React (Vite)
-npm run build    # Build para producción
-npm run preview  # Preview del build
-npm run server   # Solo backend
+npm run dev              # Desarrollo React (Vite)
+npm run build            # Build para producción
+npm run preview          # Preview del build
+npm run server           # Solo backend
+npm run generar-modelos  # Generar modelos de prueba en Supabase
 npm start        # Producción (backend + React)
 npm test         # Ejecutar tests
 ```
