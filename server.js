@@ -3,7 +3,29 @@ const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
-const { modelosDB, contactosDB, usuariosDB, modeloFotosDB } = require('./database');
+
+// Usar Supabase si está configurado, sino usar SQLite
+const useSupabase = process.env.USE_SUPABASE === 'true' || process.env.SUPABASE_URL;
+let modelosDB, contactosDB, usuariosDB, modeloFotosDB, initDatabase;
+
+if (useSupabase) {
+  console.log('📦 Usando Supabase como base de datos');
+  const db = require('./database-supabase');
+  modelosDB = db.modelosDB;
+  contactosDB = db.contactosDB;
+  usuariosDB = db.usuariosDB;
+  modeloFotosDB = db.modeloFotosDB;
+  initDatabase = db.initDatabase;
+} else {
+  console.log('📦 Usando SQLite como base de datos');
+  const db = require('./database');
+  modelosDB = db.modelosDB;
+  contactosDB = db.contactosDB;
+  usuariosDB = db.usuariosDB;
+  modeloFotosDB = db.modeloFotosDB;
+  initDatabase = db.initDatabase;
+}
+
 const { validateContacto, validateModelo, validateLogin } = require('./middleware/validation');
 
 const app = express();
@@ -50,28 +72,21 @@ app.get('/favicon.ico', (req, res) => {
   res.status(204).end(); // No Content - el navegador no mostrará error
 });
 
-// Ruta principal - Home con galería de modelos
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'home.html'));
-});
+// Servir archivos estáticos de public (para assets durante desarrollo)
+app.use(express.static('public', {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true
+}));
 
-// Ruta del formulario de contacto (pública)
-app.get('/contacto', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'contacto.html'));
-});
+// Servir archivos estáticos de React en producción
+// En desarrollo, Vite sirve los archivos estáticos en puerto 5173
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'dist')));
+}
 
-// Ruta de detalle de modelo (pública)
-app.get('/modelo/:id', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'modelo-detalle.html'));
-});
-
-// Ruta de login
-app.get('/login', (req, res) => {
-  if (req.session && req.session.userId) {
-    return res.redirect('/admin');
-  }
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
+// Rutas de API (deben estar antes de las rutas de React)
+// Las rutas de API ya están definidas arriba
 
 // Ruta de logout
 app.get('/logout', (req, res) => {
@@ -79,10 +94,17 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// Panel de administración
-app.get('/admin', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
+// En producción, servir la app React para todas las rutas no-API
+// En desarrollo, estas rutas son manejadas por Vite
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    // No servir React para rutas de API
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ success: false, message: 'Ruta no encontrada' });
+    }
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+}
 
 // API - Login
 app.post('/api/login', validateLogin, async (req, res) => {
@@ -431,13 +453,12 @@ app.post('/api/admin/generar-qr', requireAuth, async (req, res) => {
   }
 });
 
-// Servir archivos estáticos AL FINAL, después de todas las rutas
-// IMPORTANTE: Esto debe estar después de todas las rutas para que los archivos .js, .css, etc. se sirvan correctamente
-app.use(express.static('public', {
-  maxAge: '1d', // Cache por 1 día
-  etag: true,
-  lastModified: true
-}));
+// Nota: Los archivos estáticos se sirven arriba, antes de las rutas de React
+
+// Inicializar base de datos
+initDatabase().catch(err => {
+  console.error('Error inicializando base de datos:', err);
+});
 
 // Función para iniciar el servidor
 function startServer() {

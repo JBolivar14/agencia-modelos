@@ -1,12 +1,12 @@
-# Agencia Modelos - Portal Web
+# 👗 Agencia Modelos - Portal Web
 
-Aplicación web completa para gestionar y mostrar un catálogo de modelos profesionales. Incluye panel de administración, galería pública, páginas de detalle y sistema de contacto mediante QR.
+Aplicación web completa desarrollada con **React + Vite** y **Node.js + Express** para gestionar y mostrar un catálogo de modelos profesionales. Incluye panel de administración, galería pública, páginas de detalle y sistema de contacto mediante QR.
 
 ## 🚀 Características
 
 ### Público
-- **Home**: Galería de modelos activas con diseño moderno
-- **Páginas de Detalle**: Información completa de cada modelo
+- **Home**: Galería de modelos activas con búsqueda, filtros y diseño moderno
+- **Páginas de Detalle**: Información completa de cada modelo con galería de fotos y lightbox
 - **Formulario de Contacto**: Sistema para que futuras modelos compartan sus datos
 - **QR Code**: Generación de códigos QR para compartir el formulario de contacto
 
@@ -16,24 +16,88 @@ Aplicación web completa para gestionar y mostrar un catálogo de modelos profes
 - **Generación de QR**: Crear y compartir códigos QR en múltiples redes sociales
 - **Autenticación**: Sistema de login seguro con sesiones
 
+## 🛠️ Stack Tecnológico
+
+### Frontend
+- **React 18** - Framework UI
+- **Vite** - Build tool y dev server
+- **React Router DOM** - Navegación
+- **CSS3** - Estilos personalizados con gradientes y animaciones
+
+### Backend
+- **Node.js + Express** - Servidor API
+- **Base de Datos**: SQLite3 (local) o **Supabase** (nube)
+- **Autenticación**: Express Session + bcrypt
+- **QR Codes**: qrcode
+
 ## 📦 Instalación
 
-1. **Clonar o descargar el repositorio**
+### 1. Clonar el repositorio
+```bash
+git clone https://github.com/TU_USUARIO/agencia-modelos.git
+cd agencia-modelos
+```
 
-2. **Instalar dependencias:**
+### 2. Instalar dependencias
 ```bash
 npm install
 ```
 
-3. **Iniciar el servidor:**
+### 3. Configurar variables de entorno
+
+Crea un archivo `.env` en la raíz del proyecto:
+
+#### Para desarrollo local (SQLite):
+```env
+PORT=3000
+NODE_ENV=development
+SESSION_SECRET=tu-session-secret-aqui
+```
+
+#### Para producción (Supabase):
+```env
+USE_SUPABASE=true
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_ANON_KEY=tu-anon-key
+SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+PORT=3000
+NODE_ENV=production
+SESSION_SECRET=tu-session-secret-seguro-aqui
+```
+
+**Nota**: Para obtener las credenciales de Supabase, ve a tu proyecto en [supabase.com](https://supabase.com) → Settings → API
+
+### 4. Configurar Base de Datos
+
+#### Opción A: SQLite (Desarrollo)
+- La base de datos se crea automáticamente al iniciar
+- No requiere configuración adicional
+
+#### Opción B: Supabase (Producción)
+1. Crea un proyecto en [supabase.com](https://supabase.com)
+2. Ve a **SQL Editor** y ejecuta el contenido de `supabase-migration.sql`
+3. Configura las variables de entorno en `.env`
+
+### 5. Iniciar la aplicación
+
+#### Desarrollo (2 terminales):
 ```bash
+# Terminal 1 - Backend
+npm run server
+
+# Terminal 2 - Frontend React
+npm run dev
+```
+
+Accede a: `http://localhost:5173`
+
+#### Producción local:
+```bash
+npm run build
 npm start
 ```
 
-4. **Acceder a la aplicación:**
-   - Home: `http://localhost:3000`
-   - Admin: `http://localhost:3000/admin`
-   - Login: `http://localhost:3000/login`
+Accede a: `http://localhost:3000`
 
 ## 🔐 Credenciales por Defecto
 
@@ -42,126 +106,82 @@ npm start
 
 ⚠️ **Importante**: Cambia la contraseña después del primer acceso en producción.
 
-## 🛠️ Tecnologías
-
-- **Backend**: Node.js + Express
-- **Base de Datos**: SQLite3
-- **Autenticación**: Express Session + bcrypt
-- **QR Codes**: qrcode
-- **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
-- **Estilos**: CSS personalizado con gradientes y animaciones
-
-## 📝 Estructura del Proyecto
+## 📁 Estructura del Proyecto
 
 ```
 .
-├── server.js              # Servidor Express principal
-├── database.js            # Configuración y funciones de base de datos
-├── package.json           # Dependencias del proyecto
-├── agencia.db            # Base de datos SQLite (se crea automáticamente)
-├── public/
-│   ├── home.html         # Página principal con galería
-│   ├── modelo-detalle.html # Página de detalle de modelo
-│   ├── contacto.html     # Formulario de contacto
-│   ├── login.html        # Página de login
-│   ├── admin.html        # Panel de administración
-│   ├── admin.js          # Lógica del panel admin
-│   ├── utils.js          # Utilidades y sistema de notificaciones
-│   └── styles.css        # Estilos globales
-└── README.md
+├── src/                    # Código React
+│   ├── components/        # Componentes reutilizables
+│   ├── pages/            # Páginas principales
+│   ├── utils/            # Utilidades
+│   ├── App.jsx           # Router principal
+│   └── main.jsx          # Entry point
+├── public/                # Archivos estáticos (legacy)
+├── server.js             # Servidor Express + API
+├── database.js           # SQLite database
+├── database-supabase.js  # Supabase database
+├── vercel.json           # Configuración Vercel
+├── vite.config.js        # Configuración Vite
+└── package.json
 ```
 
-## 🎯 Funcionalidades Principales
+## 🌐 Despliegue en Vercel
 
-### Gestión de Modelos
-- Crear nuevos modelos con información completa
-- Editar información existente
-- Activar/desactivar modelos
-- Ver estadísticas y datos de contacto
+### 1. Preparación
 
-### Sistema de Contacto
-- Formulario público para recibir datos
-- Generación de QR para compartir
-- Compartir en redes sociales (WhatsApp, Facebook, Twitter, X, Instagram, LinkedIn, Email, Telegram)
-- Almacenamiento de contactos en base de datos
+1. **Asegúrate de que el código esté en GitHub**
+2. **Configura Supabase** (recomendado para producción):
+   - Crea proyecto en Supabase
+   - Ejecuta `supabase-migration.sql`
+   - Obtén las credenciales
 
-### Panel de Administración
-- Gestión completa de modelos
-- Visualización de contactos recibidos
-- Generación y compartir de códigos QR
-- Interfaz intuitiva con tabs
+### 2. Desplegar en Vercel
 
-## 📱 Acceso desde Red Local
+1. Ve a [vercel.com](https://vercel.com) e inicia sesión
+2. Haz clic en **"Add New Project"**
+3. Importa tu repositorio de GitHub
+4. Configura el proyecto:
+   - **Framework Preset**: Vite
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+   - **Install Command**: `npm install`
 
-El servidor se inicia automáticamente escuchando en todas las interfaces de red:
+### 3. Variables de Entorno en Vercel
 
-1. El servidor mostrará tu IP local en la consola
-2. Conecta tu dispositivo móvil a la misma red WiFi
-3. Accede desde el navegador usando: `http://TU_IP:3000`
+En la configuración del proyecto en Vercel, agrega estas variables:
 
-## 🌐 Despliegue
+```
+USE_SUPABASE=true
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_ANON_KEY=tu-anon-key
+SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+SESSION_SECRET=tu-session-secret-seguro
+NODE_ENV=production
+```
 
-### Opción 1: Despliegue Local con ngrok (Recomendado para pruebas)
+### 4. Desplegar
 
-1. **Configurar ngrok:**
-   - Ejecuta `configurar-ngrok.ps1` para configurar tu token
-   - O sigue las instrucciones en `GUIA_NGROK_TOKEN.txt`
+- Haz clic en **"Deploy"**
+- Vercel construirá y desplegará automáticamente
+- Tu app estará disponible en `https://tu-proyecto.vercel.app`
 
-2. **Iniciar ngrok:**
-   ```bash
-   .\ejecutar-ngrok.ps1
-   ```
-   O manualmente:
-   ```bash
-   .\ngrok.exe http 3000
-   ```
+## 🔄 Cambiar entre SQLite y Supabase
 
-3. **Usar la URL de ngrok** que aparece en la consola
+El proyecto soporta ambas bases de datos automáticamente:
 
-### Opción 2: Despliegue en Servidor
+- **SQLite**: Si `USE_SUPABASE=false` o no está definido
+- **Supabase**: Si `USE_SUPABASE=true` y las credenciales están configuradas
 
-1. **Requisitos:**
-   - Node.js instalado
-   - Acceso SSH al servidor
-   - Puerto 3000 (o el que configures) abierto
+## 📝 Scripts Disponibles
 
-2. **Pasos:**
-   ```bash
-   # Subir archivos al servidor
-   scp -r * usuario@servidor:/ruta/aplicacion/
-   
-   # En el servidor
-   cd /ruta/aplicacion
-   npm install
-   npm start
-   ```
-
-3. **Usar PM2 para producción:**
-   ```bash
-   npm install -g pm2
-   pm2 start server.js --name agencia-modelos
-   pm2 save
-   pm2 startup
-   ```
-
-### Opción 3: Plataformas Cloud
-
-#### Heroku
 ```bash
-heroku create agencia-modelos
-git push heroku main
+npm run dev      # Desarrollo React (Vite)
+npm run build    # Build para producción
+npm run preview  # Preview del build
+npm run server   # Solo backend
+npm start        # Producción (backend + React)
+npm test         # Ejecutar tests
 ```
-
-#### Railway
-1. Conecta tu repositorio
-2. Railway detectará automáticamente Node.js
-3. Configura el puerto: `PORT` variable de entorno
-
-#### Render
-1. Conecta tu repositorio
-2. Selecciona Node.js
-3. Build command: `npm install`
-4. Start command: `npm start`
 
 ## 🔒 Seguridad
 
@@ -170,40 +190,58 @@ git push heroku main
 - ✅ Validación de datos en servidor
 - ✅ Protección contra XSS (escape de HTML)
 - ✅ Validación de IDs y parámetros
-- ⚠️ **Cambiar secret de sesión en producción**
+- ✅ Variables de entorno para secretos
+- ⚠️ **Cambiar SESSION_SECRET en producción**
 - ⚠️ **Usar HTTPS en producción**
-
-## 📊 Base de Datos
-
-La aplicación usa SQLite3 con las siguientes tablas:
-
-- **usuarios**: Administradores del sistema
-- **modelos**: Información de las modelos
-- **contactos**: Datos de contacto recibidos
-
-La base de datos se crea automáticamente al iniciar el servidor.
 
 ## 🐛 Solución de Problemas
 
 ### El servidor no inicia
 - Verifica que el puerto 3000 no esté en uso
 - Revisa que todas las dependencias estén instaladas: `npm install`
+- Verifica las variables de entorno en `.env`
 
-### No puedo acceder desde otro dispositivo
-- Verifica que estén en la misma red WiFi
-- Abre el firewall (ejecuta `abrir-firewall.ps1`)
-- O usa ngrok para acceso externo
+### No puedo ver las modelos
+- Asegúrate de que el backend esté corriendo en puerto 3000
+- Verifica que haya modelos en la base de datos
+- Revisa la consola del navegador por errores
 
-### Error de base de datos
+### Error de base de datos (Supabase)
+- Verifica que las credenciales en `.env` sean correctas
+- Asegúrate de que las tablas estén creadas en Supabase
+- Revisa las políticas RLS en Supabase
+
+### Error de base de datos (SQLite)
 - Elimina `agencia.db` y reinicia el servidor
 - Verifica permisos de escritura en el directorio
 
-## 📞 Soporte
+### Problemas en Vercel
+- Verifica que todas las variables de entorno estén configuradas
+- Asegúrate de usar Supabase (SQLite no funciona en Vercel)
+- Revisa los logs de build en Vercel Dashboard
 
-Para más información, consulta:
-- `LEEME_PRIMERO.txt` - Guía inicial
-- `GUIA_NGROK_TOKEN.txt` - Configuración de ngrok
-- `SOLUCION_PROBLEMAS.md` - Soluciones comunes
+## 📊 Base de Datos
+
+### Tablas
+- **usuarios**: Administradores del sistema
+- **modelos**: Información de las modelos
+- **modelo_fotos**: Múltiples fotos por modelo
+- **contactos**: Datos de contacto recibidos
+
+### Migración de Datos
+
+Si tienes datos en SQLite y quieres migrarlos a Supabase:
+
+```bash
+node migrate-to-supabase.js
+```
+
+## 🧪 Testing
+
+```bash
+npm test              # Ejecutar todos los tests
+npm run test:watch    # Modo watch
+```
 
 ## 📄 Licencia
 
