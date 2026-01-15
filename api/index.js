@@ -1,3 +1,6 @@
+// Vercel Serverless Function - Express API
+// Este archivo es el punto de entrada para todas las rutas /api/*
+
 const express = require('express');
 const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
@@ -10,7 +13,7 @@ let modelosDB, contactosDB, usuariosDB, modeloFotosDB, initDatabase;
 
 if (useSupabase) {
   console.log('📦 Usando Supabase como base de datos');
-  const db = require('./database-supabase');
+  const db = require('../database-supabase');
   modelosDB = db.modelosDB;
   contactosDB = db.contactosDB;
   usuariosDB = db.usuariosDB;
@@ -18,7 +21,7 @@ if (useSupabase) {
   initDatabase = db.initDatabase;
 } else {
   console.log('📦 Usando SQLite como base de datos');
-  const db = require('./database');
+  const db = require('../database');
   modelosDB = db.modelosDB;
   contactosDB = db.contactosDB;
   usuariosDB = db.usuariosDB;
@@ -26,37 +29,63 @@ if (useSupabase) {
   initDatabase = db.initDatabase;
 }
 
-const { validateContacto, validateModelo, validateLogin } = require('./middleware/validation');
+const { validateContacto, validateModelo, validateLogin } = require('../middleware/validation');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Configurar sesiones
+// Configurar sesiones para Vercel
 // IMPORTANTE: En producción, usar variable de entorno SESSION_SECRET
 const SESSION_SECRET = process.env.SESSION_SECRET || 'agencia-modelos-secret-key-change-in-production';
-app.use(session({
+
+// En Vercel, usar MemoryStore para sesiones (compatible con serverless)
+let sessionConfig = {
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  name: 'sessionId', // Cambiar nombre de cookie para seguridad
+  name: 'sessionId',
   cookie: { 
-    secure: process.env.NODE_ENV === 'production', // true en producción con HTTPS
-    httpOnly: true, // Prevenir acceso desde JavaScript
+    secure: true, // HTTPS en Vercel
+    httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 horas
-    sameSite: 'strict' // Protección CSRF
+    sameSite: 'none' // Necesario para CORS en Vercel
   }
-}));
+};
+
+// Solo usar MemoryStore si está disponible (para Vercel)
+try {
+  const MemoryStore = require('memorystore')(session);
+  sessionConfig.store = new MemoryStore({
+    checkPeriod: 86400000 // 24 horas
+  });
+} catch (e) {
+  // Si memorystore no está disponible, usar default store
+  console.log('Usando default session store');
+}
+
+app.use(session(sessionConfig));
+
+// CORS para Vercel
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Middleware para verificar autenticación
 function requireAuth(req, res, next) {
   if (req.session && req.session.userId) {
     return next();
   } else {
-    // Si es una petición AJAX/API, retornar JSON en lugar de redirect
     if (req.path.startsWith('/api/')) {
       return res.status(401).json({
         success: false,
@@ -65,79 +94,6 @@ function requireAuth(req, res, next) {
     }
     res.redirect('/login');
   }
-}
-
-// Ruta para favicon (evitar error 404)
-app.get('/favicon.ico', (req, res) => {
-  res.status(204).end(); // No Content - el navegador no mostrará error
-});
-
-// Servir archivos estáticos de public (para assets durante desarrollo)
-app.use(express.static('public', {
-  maxAge: '1d',
-  etag: true,
-  lastModified: true
-}));
-
-// Servir archivos estáticos de React (tanto en desarrollo como producción)
-// En desarrollo, si dist/ existe, servirlo. Si no, usar Vite en puerto 5173
-const distPath = path.join(__dirname, 'dist');
-if (require('fs').existsSync(distPath)) {
-  app.use(express.static(distPath, {
-    maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
-    etag: true,
-    lastModified: true
-  }));
-}
-
-// Rutas de API (deben estar antes de las rutas de React)
-// Las rutas de API ya están definidas arriba
-
-// Ruta de logout
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/login');
-});
-
-// Servir la app React para todas las rutas no-API
-// Si dist/ existe, servir React. Si no, redirigir a Vite en desarrollo
-const distIndexPath = path.join(__dirname, 'dist', 'index.html');
-if (require('fs').existsSync(distIndexPath)) {
-  app.get('*', (req, res) => {
-    // No servir React para rutas de API
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ success: false, message: 'Ruta no encontrada' });
-    }
-    res.sendFile(distIndexPath);
-  });
-} else {
-  // En desarrollo sin build, mostrar mensaje útil
-  app.get('*', (req, res) => {
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ success: false, message: 'Ruta no encontrada' });
-    }
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Agencia Modelos - Desarrollo</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-            h1 { color: #0483B8; }
-            p { color: #666; margin: 20px 0; }
-            code { background: #f4f4f4; padding: 2px 8px; border-radius: 4px; }
-          </style>
-        </head>
-        <body>
-          <h1>🚀 Modo Desarrollo</h1>
-          <p>Para ver la aplicación React, ejecuta:</p>
-          <p><code>npm run dev</code></p>
-          <p>Luego accede a: <a href="http://localhost:5173">http://localhost:5173</a></p>
-          <p><strong>O</strong> ejecuta <code>npm run build</code> y luego <code>npm start</code></p>
-        </body>
-      </html>
-    `);
-  });
 }
 
 // API - Login
@@ -208,11 +164,9 @@ app.get('/api/modelos', async (req, res) => {
   try {
     const modelos = await modelosDB.getAll();
     
-    // Agregar primera foto de cada modelo (para compatibilidad)
     for (let modelo of modelos) {
       const fotos = await modeloFotosDB.getByModeloId(modelo.id);
       modelo.fotos = fotos || [];
-      // Mantener compatibilidad: si hay fotos pero no hay foto principal, usar la primera
       if (!modelo.foto && fotos.length > 0) {
         modelo.foto = fotos[0].url;
       }
@@ -251,14 +205,13 @@ app.get('/api/modelos/:id', async (req, res) => {
     }
     
     // Solo devolver modelos activas para usuarios públicos
-    if (modelo.activa !== 1) {
+    if (modelo.activa !== true && modelo.activa !== 1) {
       return res.status(404).json({ 
         success: false, 
         message: 'Modelo no encontrada' 
       });
     }
     
-    // Obtener fotos del modelo
     const fotos = await modeloFotosDB.getByModeloId(modeloId);
     modelo.fotos = fotos || [];
     
@@ -277,7 +230,6 @@ app.get('/api/admin/modelos', requireAuth, async (req, res) => {
   try {
     const modelos = await modelosDB.getAllAdmin();
     
-    // Agregar fotos a cada modelo
     for (let modelo of modelos) {
       const fotos = await modeloFotosDB.getByModeloId(modelo.id);
       modelo.fotos = fotos || [];
@@ -300,7 +252,6 @@ app.post('/api/admin/modelos', requireAuth, validateModelo, async (req, res) => 
     const result = await modelosDB.create(modeloData);
     const modeloId = result.lastID;
     
-    // Si hay fotos, guardarlas
     if (fotos && Array.isArray(fotos) && fotos.length > 0) {
       const fotosValidas = fotos.filter(foto => foto && foto.trim());
       if (fotosValidas.length > 0) {
@@ -308,7 +259,6 @@ app.post('/api/admin/modelos', requireAuth, validateModelo, async (req, res) => 
       }
     }
     
-    // Obtener modelo con fotos
     const modelo = await modelosDB.getById(modeloId);
     if (modelo) {
       const fotosModelo = await modeloFotosDB.getByModeloId(modeloId);
@@ -349,12 +299,9 @@ app.put('/api/admin/modelos/:id', requireAuth, validateModelo, async (req, res) 
     
     await modelosDB.update(modeloId, modeloData);
     
-    // Si se proporcionan fotos, actualizar
     if (fotos !== undefined) {
-      // Eliminar fotos existentes
       await modeloFotosDB.deleteByModeloId(modeloId);
       
-      // Agregar nuevas fotos
       if (Array.isArray(fotos) && fotos.length > 0) {
         const fotosValidas = fotos.filter(foto => foto && foto.trim());
         if (fotosValidas.length > 0) {
@@ -461,8 +408,9 @@ app.get('/api/admin/contactos', requireAuth, async (req, res) => {
 // API - Generar QR (admin)
 app.post('/api/admin/generar-qr', requireAuth, async (req, res) => {
   try {
-    const protocol = req.protocol;
-    const host = req.get('host');
+    // En Vercel, usar el hostname de la request
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || 'tu-dominio.vercel.app';
     const contactUrl = `${protocol}://${host}/contacto`;
     
     const qrCodeDataURL = await QRCode.toDataURL(contactUrl, {
@@ -487,51 +435,10 @@ app.post('/api/admin/generar-qr', requireAuth, async (req, res) => {
   }
 });
 
-// Nota: Los archivos estáticos se sirven arriba, antes de las rutas de React
-
 // Inicializar base de datos
 initDatabase().catch(err => {
   console.error('Error inicializando base de datos:', err);
 });
 
-// Función para iniciar el servidor
-function startServer() {
-  app.listen(PORT, '0.0.0.0', () => {
-    const os = require('os');
-    const networkInterfaces = os.networkInterfaces();
-    let localIP = 'localhost';
-    
-    // Buscar la IP local
-    for (const interfaceName in networkInterfaces) {
-      const interfaces = networkInterfaces[interfaceName];
-      for (const iface of interfaces) {
-        if (iface.family === 'IPv4' && !iface.internal) {
-          localIP = iface.address;
-          break;
-        }
-      }
-      if (localIP !== 'localhost') break;
-    }
-    
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-    console.log(`🌐 Acceso desde red local: http://${localIP}:${PORT}`);
-    console.log(`🏠 Home: http://${localIP}:${PORT}`);
-    console.log(`🔐 Login: http://${localIP}:${PORT}/login`);
-    console.log(`\n📋 CREDENCIALES DE ADMINISTRADOR:`);
-    console.log(`   Usuario: admin`);
-    console.log(`   Contraseña: admin123`);
-    console.log(`\n📱 Para acceder desde tu celular:`);
-    console.log(`   1. Asegúrate de que tu celular esté en la misma red WiFi`);
-    console.log(`   2. Abre el navegador en tu celular`);
-    console.log(`   3. Ingresa: http://${localIP}:${PORT}`);
-    console.log(`\n💡 Nota: Por seguridad, cambia la contraseña después del primer acceso\n`);
-  });
-}
-
-// Exportar app para testing y Vercel
+// Exportar app para Vercel (NO llamar app.listen())
 module.exports = app;
-
-// Iniciar servidor solo si se ejecuta directamente (no en Vercel)
-if (require.main === module) {
-  startServer();
-}

@@ -16,7 +16,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    emptyOutDir: true,
   },
+  base: '/', // Asegurar rutas relativas
   resolve: {
     alias: {
       '@': path.resolve(process.cwd(), './src'),
