@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es" class="home-body-page">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Descubre nuestro catálogo de modelos profesionales. Agencia Modelos - Talento y profesionalismo.">
+    <meta name="theme-color" content="#0483B8">
+    <title>Agencia Modelos - Nuestras Modelos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👗</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=4.0">
+    <script src="utils.js" defer></script>
+    <style>
+        html.home-body-page,
+        html.home-body-page body.home-body {
+            background: linear-gradient(135deg, #CB262C 0%, #D6293D 45%, #063F90 55%, #0483B8 100%) !important;
+            background-attachment: fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+        }
+    </style>
+</head>
+<body class="home-body">
+    <header class="header" role="banner">
+        <div class="container">
+            <h1 class="logo" aria-label="Agencia Modelos">Agencia Modelos</h1>
+            <nav role="navigation" aria-label="Navegación principal">
+                <a href="/" class="nav-link active" aria-current="page">Home</a>
+                <a href="/contacto" class="nav-link">Contacto</a>
+                <a href="/login" class="nav-link">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <section class="hero">
+            <h2>Nuestras Modelos</h2>
+            <p>Descubre nuestro talento y profesionalismo</p>
+        </section>
+
+        <!-- Búsqueda y Filtros -->
+        <section class="search-filters-section">
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        class="search-input" 
+                        placeholder="Buscar por nombre..."
+                        aria-label="Buscar modelos"
+                    >
+                    <button id="clearSearch" class="clear-search-btn" style="display: none;" aria-label="Limpiar búsqueda">✕</button>
+                </div>
+            </div>
+            
+            <div class="filters-container">
+                <div class="filter-group">
+                    <label for="filterCiudad">Ciudad:</label>
+                    <select id="filterCiudad" class="filter-select" aria-label="Filtrar por ciudad">
+                        <option value="">Todas las ciudades</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterEdad">Edad:</label>
+                    <select id="filterEdad" class="filter-select" aria-label="Filtrar por edad">
+                        <option value="">Todas las edades</option>
+                        <option value="18-25">18-25 años</option>
+                        <option value="26-30">26-30 años</option>
+                        <option value="31-35">31-35 años</option>
+                        <option value="36+">36+ años</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortBy">Ordenar por:</label>
+                    <select id="sortBy" class="filter-select" aria-label="Ordenar modelos">
+                        <option value="nombre">Nombre (A-Z)</option>
+                        <option value="nombre-desc">Nombre (Z-A)</option>
+                        <option value="fecha">Más recientes</option>
+                        <option value="fecha-desc">Más antiguos</option>
+                        <option value="edad">Edad (menor a mayor)</option>
+                        <option value="edad-desc">Edad (mayor a menor)</option>
+                    </select>
+                </div>
+                
+                <button id="resetFilters" class="btn-reset-filters" aria-label="Restablecer filtros">
+                    🔄 Limpiar Filtros
+                </button>
+            </div>
+            
+            <div class="results-count" id="resultsCount" style="display: none;">
+                <span id="resultsText"></span>
+            </div>
+        </section>
+
+        <section class="modelos-grid" id="modelosGrid" aria-live="polite" aria-label="Galería de modelos">
+            <div class="loading-models" role="status" aria-label="Cargando modelos">
+                <span class="loading"></span>
+                Cargando modelos...
+            </div>
+        </section>
+
+        <div id="noModelos" class="no-modelos" style="display: none;">
+            <p>No hay modelos disponibles en este momento.</p>
+        </div>
+
+        <div id="errorModelos" class="error-container" style="display: none;">
+            <p class="error-message"></p>
+            <button onclick="cargarModelos()" class="btn-retry">Intentar de nuevo</button>
+        </div>
+    </main>
+
+    <footer class="footer-modern">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3 class="footer-logo">Agencia Modelos</h3>
+                    <p class="footer-tagline">Descubre el talento y profesionalismo</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-section">
+                        <h4 class="footer-title">Navegación</h4>
+                        <a href="/" class="footer-link">Home</a>
+                        <a href="/contacto" class="footer-link">Contacto</a>
+                        <a href="/login" class="footer-link">Admin</a>
+                    </div>
+                    <div class="footer-section">
+                        <h4 class="footer-title">Información</h4>
+                        <a href="/contacto" class="footer-link">Contáctanos</a>
+                        <a href="#" class="footer-link">Sobre Nosotros</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Agencia Modelos. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Variables globales
+        let todosLosModelos = [];
+        let modelosFiltrados = [];
+        
+        // Cargar modelos al cargar la página
+        async function cargarModelos() {
+            const grid = document.getElementById('modelosGrid');
+            const noModelos = document.getElementById('noModelos');
+            const errorContainer = document.getElementById('errorModelos');
+            const errorMessage = document.querySelector('.error-message');
+            
+            // Resetear estados
+            grid.style.display = 'grid';
+            noModelos.style.display = 'none';
+            errorContainer.style.display = 'none';
+            grid.innerHTML = '<div class="loading-models">Cargando modelos...</div>';
+            
+            try {
+                const response = await fetch('/api/modelos');
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al obtener modelos');
+                }
+                
+                if (data.modelos && data.modelos.length > 0) {
+                    todosLosModelos = data.modelos;
+                    
+                    // Llenar selector de ciudades
+                    llenarCiudades();
+                    
+                    // Mostrar modelos
+                    aplicarFiltros();
+                } else {
+                    grid.style.display = 'none';
+                    noModelos.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error cargando modelos:', error);
+                grid.style.display = 'none';
+                errorMessage.textContent = error.message || 'Error cargando modelos. Por favor, intenta más tarde.';
+                errorContainer.style.display = 'block';
+            }
+        }
+        
+        // Llenar selector de ciudades con ciudades únicas
+        function llenarCiudades() {
+            const ciudades = [...new Set(todosLosModelos
+                .map(m => m.ciudad)
+                .filter(c => c && c.trim())
+                .sort()
+            )];
+            
+            const selectCiudad = document.getElementById('filterCiudad');
+            ciudades.forEach(ciudad => {
+                const option = document.createElement('option');
+                option.value = ciudad;
+                option.textContent = ciudad;
+                selectCiudad.appendChild(option);
+            });
+        }
+        
+        // Aplicar filtros y mostrar modelos
+        function aplicarFiltros() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const ciudad = document.getElementById('filterCiudad').value;
+            const edad = document.getElementById('filterEdad').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            // Filtrar modelos
+            modelosFiltrados = todosLosModelos.filter(modelo => {
+                // Filtro por búsqueda (nombre o apellido)
+                if (searchTerm) {
+                    const nombreCompleto = `${modelo.nombre || ''} ${modelo.apellido || ''}`.toLowerCase();
+                    if (!nombreCompleto.includes(searchTerm)) {
+                        return false;
+                    }
+                }
+                
+                // Filtro por ciudad
+                if (ciudad && modelo.ciudad !== ciudad) {
+                    return false;
+                }
+                
+                // Filtro por edad
+                if (edad && modelo.edad) {
+                    const edadNum = parseInt(modelo.edad);
+                    if (edad === '18-25' && (edadNum < 18 || edadNum > 25)) return false;
+                    if (edad === '26-30' && (edadNum < 26 || edadNum > 30)) return false;
+                    if (edad === '31-35' && (edadNum < 31 || edadNum > 35)) return false;
+                    if (edad === '36+' && edadNum < 36) return false;
+                }
+                
+                return true;
+            });
+            
+            // Ordenar modelos
+            modelosFiltrados.sort((a, b) => {
+                switch(sortBy) {
+                    case 'nombre':
+                        return `${a.nombre || ''} ${a.apellido || ''}`.localeCompare(`${b.nombre || ''} ${b.apellido || ''}`);
+                    case 'nombre-desc':
+                        return `${b.nombre || ''} ${b.apellido || ''}`.localeCompare(`${a.nombre || ''} ${a.apellido || ''}`);
+                    case 'fecha':
+                        return new Date(b.creado_en || 0) - new Date(a.creado_en || 0);
+                    case 'fecha-desc':
+                        return new Date(a.creado_en || 0) - new Date(b.creado_en || 0);
+                    case 'edad':
+                        return (a.edad || 0) - (b.edad || 0);
+                    case 'edad-desc':
+                        return (b.edad || 0) - (a.edad || 0);
+                    default:
+                        return 0;
+                }
+            });
+            
+            // Mostrar modelos
+            mostrarModelos();
+        }
+        
+        // Mostrar modelos en el grid
+        function mostrarModelos() {
+            const grid = document.getElementById('modelosGrid');
+            const noModelos = document.getElementById('noModelos');
+            const resultsCount = document.getElementById('resultsCount');
+            const resultsText = document.getElementById('resultsText');
+            const clearSearch = document.getElementById('clearSearch');
+            
+            if (modelosFiltrados.length === 0) {
+                grid.style.display = 'none';
+                noModelos.style.display = 'block';
+                noModelos.innerHTML = '<p>No se encontraron modelos con los filtros seleccionados.</p>';
+                resultsCount.style.display = 'none';
+            } else {
+                grid.style.display = 'grid';
+                noModelos.style.display = 'none';
+                
+                grid.innerHTML = modelosFiltrados.map(modelo => {
+                    // Obtener primera foto (de galería o campo foto)
+                    const primeraFoto = (modelo.fotos && modelo.fotos.length > 0 && modelo.fotos[0].url) 
+                        ? modelo.fotos[0].url 
+                        : modelo.foto;
+                    
+                    return `
+                    <div class="modelo-card" onclick="window.location.href='/modelo/${modelo.id}'" style="cursor: pointer;">
+                        ${primeraFoto ? 
+                            `<div class="modelo-foto" style="background-image: url('${escapeHtml(primeraFoto)}')"></div>` :
+                            `<div class="modelo-foto placeholder">
+                                <span>📷</span>
+                            </div>`
+                        }
+                        <div class="modelo-info">
+                            <h3>${escapeHtml(modelo.nombre)} ${modelo.apellido ? escapeHtml(modelo.apellido) : ''}</h3>
+                            ${modelo.altura ? `<p class="modelo-detail"><strong>Altura:</strong> ${escapeHtml(modelo.altura)}</p>` : ''}
+                            ${modelo.medidas ? `<p class="modelo-detail"><strong>Medidas:</strong> ${escapeHtml(modelo.medidas)}</p>` : ''}
+                            ${modelo.edad ? `<p class="modelo-detail"><strong>Edad:</strong> ${escapeHtml(modelo.edad)} años</p>` : ''}
+                            ${modelo.ciudad ? `<p class="modelo-detail">📍 ${escapeHtml(modelo.ciudad)}</p>` : ''}
+                            ${modelo.descripcion ? `<p class="modelo-descripcion">${escapeHtml(modelo.descripcion.substring(0, 100))}${modelo.descripcion.length > 100 ? '...' : ''}</p>` : ''}
+                            <div class="modelo-actions" onclick="event.stopPropagation();">
+                                <a href="/modelo/${modelo.id}" class="btn-contacto-primary">Ver Detalles</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+                
+                // Mostrar contador de resultados
+                const total = todosLosModelos.length;
+                const filtrados = modelosFiltrados.length;
+                if (filtrados < total) {
+                    resultsText.textContent = `Mostrando ${filtrados} de ${total} modelos`;
+                    resultsCount.style.display = 'block';
+                } else {
+                    resultsCount.style.display = 'none';
+                }
+            }
+            
+            // Mostrar/ocultar botón de limpiar búsqueda
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput.value.trim()) {
+                clearSearch.style.display = 'flex';
+            } else {
+                clearSearch.style.display = 'none';
+            }
+        }
+        
+        // Limpiar búsqueda
+        function limpiarBusqueda() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('clearSearch').style.display = 'none';
+            aplicarFiltros();
+        }
+        
+        // Resetear todos los filtros
+        function resetearFiltros() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterCiudad').value = '';
+            document.getElementById('filterEdad').value = '';
+            document.getElementById('sortBy').value = 'nombre';
+            document.getElementById('clearSearch').style.display = 'none';
+            aplicarFiltros();
+        }
+
+        // Función para escapar HTML y prevenir XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', aplicarFiltros);
+        document.getElementById('searchInput').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                aplicarFiltros();
+            }
+        });
+        document.getElementById('filterCiudad').addEventListener('change', aplicarFiltros);
+        document.getElementById('filterEdad').addEventListener('change', aplicarFiltros);
+        document.getElementById('sortBy').addEventListener('change', aplicarFiltros);
+        document.getElementById('clearSearch').addEventListener('click', limpiarBusqueda);
+        document.getElementById('resetFilters').addEventListener('click', resetearFiltros);
+        
+        // Cargar modelos al iniciar
+        cargarModelos();
+    </script>
+</body>
+</html>
+

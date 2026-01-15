@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Panel de administración de Agencia Modelos">
+    <meta name="theme-color" content="#0483B8">
+    <title>Panel de Administración - Agencia Modelos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👗</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="admin-body">
+    <header class="admin-header">
+        <div class="container">
+            <h1>Panel de Administración</h1>
+            <div class="admin-actions">
+                <span id="adminUsername"></span>
+                <a href="/logout" class="btn-logout">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container admin-container">
+        <div class="admin-tabs">
+            <button class="tab-button active" onclick="showTab('qr', this)">Generar QR</button>
+            <button class="tab-button" onclick="showTab('modelos', this)">Modelos</button>
+            <button class="tab-button" onclick="showTab('contactos', this)">Contactos</button>
+        </div>
+
+        <!-- Tab QR -->
+        <div id="tab-qr" class="tab-content active">
+            <div class="card">
+                <h2>Generar Código QR</h2>
+                <p class="subtitle">Genera un código QR para compartir con futuras modelos</p>
+                
+                <div class="qr-admin-wrapper">
+                    <div id="qrAdminContainer" class="qr-admin-placeholder">
+                        <p>Haz clic en "Generar QR" para crear el código</p>
+                    </div>
+                </div>
+                
+                <button onclick="generarQR()" class="btn-primary">Generar QR</button>
+                
+                <div id="qrUrl" class="qr-url-display" style="display: none;">
+                    <p><strong>URL:</strong> <span id="qrUrlText"></span></p>
+                    <div class="qr-actions">
+                        <button onclick="copiarQRUrl(event)" class="btn-copy">📋 Copiar URL</button>
+                        <button onclick="compartirQR()" class="btn-share" id="btnShareNative">📤 Compartir (Nativo)</button>
+                        <button onclick="compartirEnRedes()" class="btn-share-social">🌐 Compartir en Redes</button>
+                    </div>
+                    
+                    <div class="share-buttons" id="shareButtons" style="display: none;">
+                        <p class="share-title">Compartir en:</p>
+                        <div class="share-grid">
+                            <button onclick="compartirWhatsApp()" class="share-btn share-whatsapp">
+                                <span class="share-icon">💬</span>
+                                <span>WhatsApp</span>
+                            </button>
+                            <button onclick="compartirFacebook()" class="share-btn share-facebook">
+                                <span class="share-icon">📘</span>
+                                <span>Facebook</span>
+                            </button>
+                            <button onclick="compartirTwitter()" class="share-btn share-twitter">
+                                <span class="share-icon">🐦</span>
+                                <span>Twitter</span>
+                            </button>
+                            <button onclick="compartirX()" class="share-btn share-x">
+                                <span class="share-icon" style="font-size: 1.5em; font-weight: bold;">𝕏</span>
+                                <span>X</span>
+                            </button>
+                            <button onclick="compartirInstagram()" class="share-btn share-instagram">
+                                <span class="share-icon" style="font-size: 1.5em;">📸</span>
+                                <span>Instagram</span>
+                            </button>
+                            <button onclick="compartirLinkedIn()" class="share-btn share-linkedin">
+                                <span class="share-icon">💼</span>
+                                <span>LinkedIn</span>
+                            </button>
+                            <button onclick="compartirEmail()" class="share-btn share-email">
+                                <span class="share-icon">✉️</span>
+                                <span>Email</span>
+                            </button>
+                            <button onclick="compartirTelegram()" class="share-btn share-telegram">
+                                <span class="share-icon">✈️</span>
+                                <span>Telegram</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Modelos -->
+        <div id="tab-modelos" class="tab-content">
+            <div class="card">
+                <div class="section-header">
+                    <h2>Gestión de Modelos</h2>
+                    <button onclick="mostrarFormModelo()" class="btn-primary">+ Agregar Modelo</button>
+                </div>
+
+                <div id="formModelo" class="modelo-form-container" style="display: none;">
+                    <h3 id="formModeloTitulo">Agregar Nuevo Modelo</h3>
+                    <form id="modeloForm">
+                        <input type="hidden" id="modeloId">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="mNombre">Nombre *</label>
+                                <input type="text" id="mNombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="mApellido">Apellido</label>
+                                <input type="text" id="mApellido">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="mEmail">Email</label>
+                                <input type="email" id="mEmail">
+                            </div>
+                            <div class="form-group">
+                                <label for="mTelefono">Teléfono</label>
+                                <input type="tel" id="mTelefono">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="mEdad">Edad</label>
+                                <input type="number" id="mEdad">
+                            </div>
+                            <div class="form-group">
+                                <label for="mAltura">Altura</label>
+                                <input type="text" id="mAltura" placeholder="ej: 175 cm">
+                            </div>
+                            <div class="form-group">
+                                <label for="mMedidas">Medidas</label>
+                                <input type="text" id="mMedidas" placeholder="ej: 90-60-90">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="mCiudad">Ciudad</label>
+                            <input type="text" id="mCiudad">
+                        </div>
+                        <div class="form-group">
+                            <label>Fotos del Modelo</label>
+                            <div id="fotosContainer">
+                                <div class="foto-input-group">
+                                    <input type="url" class="foto-url-input" placeholder="https://ejemplo.com/foto1.jpg">
+                                    <button type="button" class="btn-remove-foto" onclick="removeFotoInput(this)" style="display: none;">✕</button>
+                                </div>
+                            </div>
+                            <button type="button" onclick="addFotoInput()" class="btn-add-foto">+ Agregar otra foto</button>
+                            <small style="display: block; margin-top: 8px; color: var(--text-secondary);">
+                                Puedes agregar múltiples fotos. La primera será la foto principal.
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="mDescripcion">Descripción</label>
+                            <textarea id="mDescripcion" rows="3"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Guardar</button>
+                            <button type="button" onclick="cancelarFormModelo()" class="btn-secondary">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="modelosList" class="modelos-list">
+                    <div class="loading">Cargando modelos...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Contactos -->
+        <div id="tab-contactos" class="tab-content">
+            <div class="card">
+                <h2>Contactos Recibidos</h2>
+                <p class="subtitle">Personas que han compartido sus datos mediante el formulario</p>
+                
+                <div id="contactosList" class="contactos-list">
+                    <div class="loading">Cargando contactos...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="utils.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
+

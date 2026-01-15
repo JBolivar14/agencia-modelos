@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════════════════
+  CONFIGURAR NGROK - OBTENER TOKEN GRATUITO
+═══════════════════════════════════════════════════════════════
+
+ngrok ahora requiere un token de autenticacion gratuito.
+
+PASO 1: Obtener tu token gratuito
+─────────────────────────────────────────────────
+
+1. Ve a: https://dashboard.ngrok.com/signup
+   (Crea una cuenta gratuita - no requiere tarjeta de credito)
+
+2. Despues de crear la cuenta, ve a:
+   https://dashboard.ngrok.com/get-started/your-authtoken
+
+3. Copia tu authtoken (es una cadena larga de texto)
+
+
+PASO 2: Configurar ngrok con tu token
+─────────────────────────────────────────────────
+
+OPCION A: Usar el script automatico
+  1. Ejecuta: .\configurar-ngrok.ps1
+  2. Pega tu token cuando te lo pida
+
+OPCION B: Configurar manualmente
+  1. Abre PowerShell en esta carpeta
+  2. Ejecuta:
+     .\ngrok.exe config add-authtoken TU_TOKEN_AQUI
+  3. Reemplaza TU_TOKEN_AQUI con el token que copiaste
+
+
+PASO 3: Usar ngrok
+─────────────────────────────────────────────────
+
+Una vez configurado el token:
+
+1. Asegurate de que el servidor este corriendo:
+   npm start
+
+2. En otra ventana de PowerShell, ejecuta:
+   .\ngrok.exe http 3000
+
+3. Veras algo como:
+   Forwarding  https://abc123.ngrok-free.app -> http://localhost:3000
+
+4. Copia la URL (https://abc123.ngrok-free.app)
+
+5. Usala desde tu celular (funciona desde cualquier red)
+
+
+NOTAS IMPORTANTES
+─────────────────────────────────────────────────
+
+✅ La cuenta de ngrok es GRATUITA
+✅ No requiere tarjeta de credito
+✅ El token solo se configura UNA VEZ
+✅ Despues puedes usar ngrok siempre que quieras
+
+═══════════════════════════════════════════════════════════════
+
+

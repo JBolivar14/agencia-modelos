@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Acceso administrativo a Agencia Modelos">
+    <meta name="theme-color" content="#0483B8">
+    <title>Login - Agencia Modelos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👗</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+    <script src="utils.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <div class="card login-card">
+            <h1>🔐 Acceso Administrativo</h1>
+            <p class="subtitle">Ingresa tus credenciales para acceder al panel</p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        name="username" 
+                        required 
+                        placeholder="Ingresa tu usuario"
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required 
+                        placeholder="Ingresa tu contraseña"
+                        autocomplete="current-password"
+                    >
+                </div>
+                
+                <button type="submit" class="btn-submit">
+                    <span id="submitText">Iniciar Sesión</span>
+                    <span id="submitLoader" class="loader" style="display: none;"></span>
+                </button>
+                
+                <div id="message" class="message"></div>
+            </form>
+            
+            <div class="login-footer">
+                <a href="/" class="back-link">← Volver al inicio</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Verificar si ya está autenticado
+        async function checkAuth() {
+            const response = await fetch('/api/session');
+            const data = await response.json();
+            if (data.authenticated) {
+                window.location.href = '/admin';
+            }
+        }
+
+        checkAuth();
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.querySelector('.btn-submit');
+            const submitText = document.getElementById('submitText');
+            const submitLoader = document.getElementById('submitLoader');
+            const messageDiv = document.getElementById('message');
+            
+            submitBtn.disabled = true;
+            submitText.style.display = 'none';
+            submitLoader.style.display = 'inline-block';
+            messageDiv.textContent = '';
+            messageDiv.className = 'message';
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            };
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    messageDiv.textContent = 'Login exitoso. Redirigiendo...';
+                    messageDiv.className = 'message success';
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1000);
+                } else {
+                    messageDiv.textContent = data.message || 'Usuario o contraseña incorrectos';
+                    messageDiv.className = 'message error';
+                }
+            } catch (error) {
+                messageDiv.textContent = 'Error de conexión. Por favor, intenta nuevamente.';
+                messageDiv.className = 'message error';
+            } finally {
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitLoader.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
+

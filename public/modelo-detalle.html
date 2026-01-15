@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="es" class="home-body-page">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Agencia Modelos - Detalle de Modelo</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👗</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=4.0">
+    <script>
+        // Cargar utils.js de forma asíncrona y no bloqueante
+        (function() {
+            const script = document.createElement('script');
+            script.src = '/utils.js';
+            script.async = true;
+            script.onerror = function() {
+                console.warn('utils.js no disponible, continuando sin notificaciones toast');
+                // Crear funciones básicas si utils.js falla
+                window.toast = {
+                    success: function(msg) { console.log('✅', msg); },
+                    error: function(msg) { console.error('❌', msg); },
+                    warning: function(msg) { console.warn('⚠️', msg); },
+                    info: function(msg) { console.info('ℹ️', msg); }
+                };
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
+    <style>
+        /* Fondo gradiente forzado */
+        html.home-body-page,
+        html.home-body-page body.home-body,
+        html.home-body-page body {
+            background: linear-gradient(135deg, #CB262C 0%, #D6293D 45%, #063F90 55%, #0483B8 100%) !important;
+            background-attachment: fixed !important;
+            background-size: cover !important;
+            min-height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        /* Contenedores transparentes */
+        .main-content {
+            background: transparent !important;
+            max-width: 100% !important;
+        }
+        
+        .modelo-detalle-container {
+            background: transparent !important;
+            width: 100% !important;
+        }
+        
+        /* Asegurar que el hero section se vea */
+        .modelo-hero-section {
+            position: relative !important;
+            padding: 80px 20px 60px !important;
+            min-height: 70vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+        }
+        
+        /* Hero content wrapper - Mejorado */
+        .hero-content-wrapper {
+            max-width: 1200px !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1.2fr !important;
+            gap: 50px !important;
+            align-items: start !important;
+            background: rgba(255, 255, 255, 0.98) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            padding: 50px !important;
+            border-radius: 30px !important;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25) !important;
+            border: 1px solid rgba(255, 255, 255, 0.5) !important;
+        }
+        
+        /* Header mejorado */
+        .header {
+            background: rgba(255, 255, 255, 0.98) !important;
+            backdrop-filter: blur(20px) !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+            padding: 15px 0 !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1000 !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        .header .container {
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            padding: 0 30px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        
+        .logo {
+            font-family: 'Playfair Display', serif !important;
+            font-size: 1.6em !important;
+            font-weight: 800 !important;
+            background: linear-gradient(135deg, #CB262C 0%, #063F90 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+            letter-spacing: -0.5px !important;
+        }
+        
+        nav {
+            display: flex !important;
+            gap: 8px !important;
+            align-items: center !important;
+        }
+        
+        .nav-link {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            font-size: 0.95em !important;
+            color: #1f2937 !important;
+            text-decoration: none !important;
+            padding: 10px 20px !important;
+            border-radius: 10px !important;
+            transition: all 0.3s ease !important;
+            position: relative !important;
+            letter-spacing: 0.3px !important;
+        }
+        
+        .nav-link:hover {
+            background: linear-gradient(135deg, rgba(203, 38, 44, 0.1) 0%, rgba(6, 63, 144, 0.1) 100%) !important;
+            color: #CB262C !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        .nav-link.active {
+            background: linear-gradient(135deg, #CB262C 0%, #063F90 100%) !important;
+            color: white !important;
+        }
+        
+        /* Tipografías mejoradas */
+        .hero-name-title {
+            font-family: 'Playfair Display', serif !important;
+            font-weight: 800 !important;
+            letter-spacing: -1px !important;
+        }
+        
+        .hero-stat-label,
+        .hero-stat-value,
+        .section-card-title,
+        .contact-label-text,
+        .contact-value-text {
+            font-family: 'Inter', sans-serif !important;
+        }
+        
+        .hero-stat-value {
+            font-weight: 700 !important;
+        }
+        
+        .description-text-content p {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 400 !important;
+        }
+        
+        /* Asegurar que las secciones de contenido se vean */
+        .modelo-content-wrapper {
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            padding: 0 20px 80px !important;
+        }
+        
+        .content-section-card {
+            background: rgba(255, 255, 255, 0.98) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border-radius: 30px !important;
+            padding: 50px !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
+            margin-bottom: 40px !important;
+            border: 1px solid rgba(255, 255, 255, 0.5) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .content-section-card:hover {
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.2) !important;
+            transform: translateY(-5px) !important;
+        }
+        
+        .section-card-header {
+            margin-bottom: 35px !important;
+            padding-bottom: 25px !important;
+            border-bottom: 3px solid !important;
+            border-image: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) 1 !important;
+        }
+        
+        .section-card-title {
+            font-size: clamp(1.75rem, 4vw, 2.5rem) !important;
+            margin: 0 !important;
+        }
+        
+        .section-icon-box {
+            width: 80px !important;
+            height: 80px !important;
+            border-radius: 20px !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+        }
+        
+        .section-icon {
+            font-size: 2.8em !important;
+        }
+        
+        /* Foto hero - Mejorada */
+        .hero-photo-large {
+            width: 100% !important;
+            height: 600px !important;
+            background-size: cover !important;
+            background-position: center top !important;
+            border-radius: 25px !important;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3) !important;
+            transition: transform 0.3s ease !important;
+            overflow: hidden !important;
+            position: relative !important;
+        }
+        
+        .hero-photo-large:hover {
+            transform: scale(1.02) !important;
+        }
+        
+        .hero-photo-large .photo-placeholder {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+            font-size: 8em !important;
+            color: #d1d5db !important;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%) !important;
+        }
+        
+        /* Ajustes de tipografía en hero - Mejorados */
+        .hero-info-wrapper {
+            font-family: 'Inter', sans-serif !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 25px !important;
+        }
+        
+        .hero-badge-modelo {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.8px !important;
+            font-size: 0.85em !important;
+            padding: 10px 24px !important;
+            border-radius: 30px !important;
+            width: fit-content !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+            animation: pulse 2s infinite !important;
+        }
+        
+        .hero-name-title {
+            font-size: clamp(2.5rem, 5vw, 4rem) !important;
+            line-height: 1.1 !important;
+            margin: 0 !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .btn-hero-contact,
+        .btn-hero-action {
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.3px !important;
+        }
+        
+        /* Botones mejorados - Diseño moderno */
+        .btn-hero-contact {
+            background: linear-gradient(135deg, #CB262C 0%, #063F90 100%) !important;
+            color: white !important;
+            padding: 20px 45px !important;
+            font-size: 1.15em !important;
+            font-weight: 700 !important;
+            border-radius: 15px !important;
+            box-shadow: 0 12px 35px rgba(203, 38, 44, 0.45) !important;
+            position: relative !important;
+            overflow: hidden !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 12px !important;
+            text-decoration: none !important;
+            letter-spacing: 0.5px !important;
+        }
+        
+        .btn-hero-contact::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: -100% !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent) !important;
+            transition: left 0.6s ease !important;
+        }
+        
+        .btn-hero-contact:hover::before {
+            left: 100% !important;
+        }
+        
+        .btn-hero-contact:hover {
+            transform: translateY(-6px) scale(1.03) !important;
+            box-shadow: 0 18px 50px rgba(203, 38, 44, 0.6) !important;
+            background: linear-gradient(135deg, #D6293D 0%, #0483B8 100%) !important;
+        }
+        
+        .btn-hero-contact:active {
+            transform: translateY(-3px) scale(1.01) !important;
+        }
+        
+        .btn-hero-action {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            color: var(--primary-color) !important;
+            padding: 18px 35px !important;
+            font-size: 1em !important;
+            font-weight: 600 !important;
+            border-radius: 15px !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+            border: 2px solid var(--primary-color) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+            text-decoration: none !important;
+            letter-spacing: 0.3px !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+        
+        .btn-hero-action::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            width: 0 !important;
+            height: 0 !important;
+            border-radius: 50% !important;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+            transform: translate(-50%, -50%) !important;
+            transition: width 0.4s ease, height 0.4s ease !important;
+            z-index: 0 !important;
+        }
+        
+        .btn-hero-action:hover::before {
+            width: 300px !important;
+            height: 300px !important;
+        }
+        
+        .btn-hero-action:hover {
+            color: white !important;
+            border-color: transparent !important;
+            transform: translateY(-5px) scale(1.02) !important;
+            box-shadow: 0 12px 35px rgba(4, 131, 184, 0.4) !important;
+        }
+        
+        .btn-hero-action span {
+            position: relative !important;
+            z-index: 1 !important;
+        }
+        
+        .btn-hero-action:active {
+            transform: translateY(-2px) scale(1.01) !important;
+        }
+        
+        /* Footer moderno */
+        .footer-modern {
+            background: rgba(255, 255, 255, 0.98) !important;
+            backdrop-filter: blur(20px) !important;
+            border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+            margin-top: 80px !important;
+            padding: 60px 0 30px !important;
+        }
+        
+        .footer-container {
+            max-width: 1200px !important;
+            margin: 0 auto !important;
+            padding: 0 30px !important;
+        }
+        
+        .footer-content {
+            display: grid !important;
+            grid-template-columns: 2fr 1fr 1fr !important;
+            gap: 50px !important;
+            margin-bottom: 40px !important;
+        }
+        
+        .footer-brand h3.footer-logo {
+            font-family: 'Playfair Display', serif !important;
+            font-size: 1.8em !important;
+            font-weight: 800 !important;
+            background: linear-gradient(135deg, #CB262C 0%, #063F90 100%) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .footer-tagline {
+            font-family: 'Inter', sans-serif !important;
+            color: #6b7280 !important;
+            font-size: 0.95em !important;
+            margin: 0 !important;
+        }
+        
+        .footer-section {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+        }
+        
+        .footer-title {
+            font-family: 'Inter', sans-serif !important;
+            font-size: 1em !important;
+            font-weight: 700 !important;
+            color: #1f2937 !important;
+            margin-bottom: 8px !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+        }
+        
+        .footer-link {
+            font-family: 'Inter', sans-serif !important;
+            color: #6b7280 !important;
+            text-decoration: none !important;
+            font-size: 0.9em !important;
+            transition: all 0.3s ease !important;
+            padding: 4px 0 !important;
+        }
+        
+        .footer-link:hover {
+            color: #CB262C !important;
+            transform: translateX(5px) !important;
+        }
+        
+        .footer-bottom {
+            border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+            padding-top: 30px !important;
+            text-align: center !important;
+        }
+        
+        .footer-bottom p {
+            font-family: 'Inter', sans-serif !important;
+            color: #9ca3af !important;
+            font-size: 0.85em !important;
+            margin: 0 !important;
+        }
+        
+        /* Mejoras adicionales para estadísticas */
+        .hero-stats-container {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+            gap: 20px !important;
+            margin: 20px 0 !important;
+        }
+        
+        .hero-stat-box {
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 25px 30px !important;
+            background: linear-gradient(135deg, rgba(203, 38, 44, 0.08) 0%, rgba(6, 63, 144, 0.08) 100%) !important;
+            border-radius: 20px !important;
+            border: 2px solid rgba(4, 131, 184, 0.1) !important;
+            transition: all 0.3s ease !important;
+            min-width: 160px !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+        
+        .hero-stat-box::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 4px !important;
+            background: linear-gradient(90deg, var(--secondary-color) 0%, var(--primary-color) 100%) !important;
+            transform: scaleX(0) !important;
+            transition: transform 0.3s ease !important;
+        }
+        
+        .hero-stat-box:hover::before {
+            transform: scaleX(1) !important;
+        }
+        
+        .hero-stat-box:hover {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+            transform: translateY(-8px) scale(1.02) !important;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25) !important;
+            border-color: transparent !important;
+        }
+        
+        .hero-stat-box:hover .hero-stat-label,
+        .hero-stat-box:hover .hero-stat-value {
+            color: white !important;
+        }
+        
+        .hero-stat-label {
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.75em !important;
+            color: var(--text-secondary) !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1.2px !important;
+            margin-bottom: 10px !important;
+            opacity: 0.8 !important;
+        }
+        
+        .hero-stat-value {
+            font-family: 'Inter', sans-serif !important;
+            font-size: 1.8em !important;
+            font-weight: 800 !important;
+            color: var(--text-primary) !important;
+            letter-spacing: -0.5px !important;
+            line-height: 1.2 !important;
+        }
+        
+        /* Mejoras para información de contacto */
+        .contact-info-container {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 20px !important;
+        }
+        
+        .contact-card-item {
+            display: flex !important;
+            align-items: center !important;
+            gap: 25px !important;
+            padding: 30px !important;
+            background: linear-gradient(135deg, rgba(203, 38, 44, 0.08) 0%, rgba(6, 63, 144, 0.08) 100%) !important;
+            border-radius: 20px !important;
+            transition: all 0.3s ease !important;
+            border: 2px solid rgba(4, 131, 184, 0.1) !important;
+            position: relative !important;
+            overflow: hidden !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+        }
+        
+        .contact-card-item:hover {
+            background: linear-gradient(135deg, rgba(203, 38, 44, 0.15) 0%, rgba(6, 63, 144, 0.15) 100%) !important;
+            transform: translateX(12px) scale(1.02) !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        .contact-icon-wrapper {
+            font-size: 3.5em !important;
+            width: 90px !important;
+            height: 90px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+            border-radius: 20px !important;
+            flex-shrink: 0 !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .contact-card-item:hover .contact-icon-wrapper {
+            transform: scale(1.1) rotate(5deg) !important;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3) !important;
+        }
+        
+        .contact-label-text {
+            font-family: 'Inter', sans-serif !important;
+            font-size: 0.8em !important;
+            color: var(--text-secondary) !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1.5px !important;
+            margin-bottom: 10px !important;
+            opacity: 0.9 !important;
+        }
+        
+        .contact-value-text {
+            font-family: 'Inter', sans-serif !important;
+            color: var(--primary-color) !important;
+            text-decoration: none !important;
+            font-weight: 700 !important;
+            font-size: 1.3em !important;
+            transition: all 0.3s ease !important;
+            display: block !important;
+            letter-spacing: 0.3px !important;
+        }
+        
+        .contact-card-item:hover .contact-value-text {
+            color: var(--primary-dark) !important;
+            transform: translateX(5px) !important;
+        }
+        
+        .contact-action-btn {
+            width: 60px !important;
+            height: 60px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) !important;
+            color: white !important;
+            border-radius: 50% !important;
+            text-decoration: none !important;
+            font-size: 1.8em !important;
+            font-weight: bold !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+            flex-shrink: 0 !important;
+        }
+        
+        .contact-action-btn:hover {
+            transform: scale(1.15) rotate(90deg) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35) !important;
+        }
+        
+        .hero-actions-container {
+            display: flex !important;
+            gap: 15px !important;
+            flex-wrap: wrap !important;
+            margin-top: 30px !important;
+            padding-top: 25px !important;
+            border-top: 2px solid rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        .description-text-content {
+            background: linear-gradient(135deg, rgba(203, 38, 44, 0.06) 0%, rgba(6, 63, 144, 0.06) 100%) !important;
+            padding: 40px !important;
+            border-radius: 20px !important;
+            border-left: 5px solid !important;
+            border-image: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%) 1 !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        .description-text-content p {
+            font-family: 'Inter', sans-serif !important;
+            color: var(--text-primary) !important;
+            font-size: 1.15em !important;
+            line-height: 1.9 !important;
+            margin: 0 !important;
+            font-weight: 400 !important;
+            letter-spacing: 0.3px !important;
+        }
+        
+        /* Galería de fotos */
+        .fotos-galeria {
+            margin-top: 30px !important;
+            padding-top: 30px !important;
+            border-top: 2px solid rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        .galeria-header {
+            margin-bottom: 20px !important;
+        }
+        
+        .galeria-header h3 {
+            font-family: 'Inter', sans-serif !important;
+            font-size: 1.3em !important;
+            font-weight: 700 !important;
+            color: var(--text-primary) !important;
+            margin: 0 !important;
+        }
+        
+        .fotos-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+            gap: 15px !important;
+        }
+        
+        .foto-miniatura {
+            width: 100% !important;
+            aspect-ratio: 1 !important;
+            background-size: cover !important;
+            background-position: center !important;
+            border-radius: 12px !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            border: 3px solid transparent !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+        
+        .foto-miniatura::after {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(0, 0, 0, 0) !important;
+            transition: background 0.3s ease !important;
+        }
+        
+        .foto-miniatura:hover {
+            transform: scale(1.1) !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+            z-index: 10 !important;
+        }
+        
+        .foto-miniatura:hover::after {
+            background: rgba(0, 0, 0, 0.1) !important;
+        }
+        
+        .foto-miniatura.active {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(4, 131, 184, 0.2) !important;
+        }
+        
+        /* Lightbox Styles */
+        .lightbox {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0.95) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            z-index: 10000 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            animation: fadeIn 0.3s ease !important;
+            pointer-events: auto !important;
+            outline: none !important;
+        }
+        
+        .lightbox:focus {
+            outline: none !important;
+        }
+        
+        .lightbox-overlay {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            cursor: pointer !important;
+            z-index: 10001 !important;
+            pointer-events: auto !important;
+        }
+        
+        .lightbox-close {
+            position: absolute !important;
+            top: 20px !important;
+            right: 20px !important;
+            width: 50px !important;
+            height: 50px !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border: 2px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 50% !important;
+            color: white !important;
+            font-size: 1.5em !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            z-index: 10005 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            pointer-events: auto !important;
+            user-select: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            touch-action: manipulation !important;
+        }
+        
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.3) !important;
+            transform: scale(1.1) rotate(90deg) !important;
+        }
+        
+        .lightbox-close:active {
+            background: rgba(255, 255, 255, 0.4) !important;
+            transform: scale(0.95) !important;
+        }
+        
+        .lightbox-close:focus {
+            outline: 3px solid rgba(255, 255, 255, 0.5) !important;
+            outline-offset: 2px !important;
+        }
+        
+        .lightbox-prev,
+        .lightbox-next {
+            position: absolute !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            width: 60px !important;
+            height: 60px !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border: 2px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 50% !important;
+            color: white !important;
+            font-size: 2.5em !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            z-index: 10001 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            user-select: none !important;
+        }
+        
+        .lightbox-prev {
+            left: 20px !important;
+        }
+        
+        .lightbox-next {
+            right: 20px !important;
+        }
+        
+        .lightbox-prev:hover,
+        .lightbox-next:hover {
+            background: rgba(255, 255, 255, 0.3) !important;
+            transform: translateY(-50%) scale(1.1) !important;
+        }
+        
+        .lightbox-content {
+            position: relative !important;
+            max-width: 90% !important;
+            max-height: 85% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 10001 !important;
+        }
+        
+        .lightbox-img {
+            max-width: 100% !important;
+            max-height: 80vh !important;
+            object-fit: contain !important;
+            border-radius: 10px !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+            transition: transform 0.3s ease !important;
+            cursor: zoom-in !important;
+            user-select: none !important;
+        }
+        
+        .lightbox-img:hover {
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6) !important;
+        }
+        
+        .lightbox-info {
+            margin-top: 20px !important;
+            text-align: center !important;
+        }
+        
+        .lightbox-counter {
+            color: white !important;
+            font-size: 1.1em !important;
+            font-weight: 600 !important;
+            background: rgba(255, 255, 255, 0.2) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            padding: 10px 20px !important;
+            border-radius: 25px !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+        
+        .lightbox-thumbnails {
+            position: absolute !important;
+            bottom: 20px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            display: flex !important;
+            gap: 10px !important;
+            padding: 10px !important;
+            background: rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: blur(10px) !important;
+            -webkit-backdrop-filter: blur(10px) !important;
+            border-radius: 15px !important;
+            max-width: 90% !important;
+            overflow-x: auto !important;
+            z-index: 10001 !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent !important;
+        }
+        
+        .lightbox-thumbnails::-webkit-scrollbar {
+            height: 6px !important;
+        }
+        
+        .lightbox-thumbnails::-webkit-scrollbar-track {
+            background: transparent !important;
+        }
+        
+        .lightbox-thumbnails::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3) !important;
+            border-radius: 3px !important;
+        }
+        
+        .lightbox-thumbnail {
+            width: 80px !important;
+            height: 80px !important;
+            background-size: cover !important;
+            background-position: center !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            border: 3px solid transparent !important;
+            transition: all 0.3s ease !important;
+            flex-shrink: 0 !important;
+            opacity: 0.7 !important;
+        }
+        
+        .lightbox-thumbnail:hover {
+            opacity: 1 !important;
+            transform: scale(1.1) !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
+        }
+        
+        .lightbox-thumbnail.active {
+            border-color: var(--primary-color) !important;
+            opacity: 1 !important;
+            box-shadow: 0 0 0 3px rgba(4, 131, 184, 0.3) !important;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0 !important;
+            }
+            to {
+                opacity: 1 !important;
+            }
+        }
+        
+        /* Responsive para lightbox */
+        @media (max-width: 768px) {
+            .lightbox-prev,
+            .lightbox-next {
+                width: 45px !important;
+                height: 45px !important;
+                font-size: 2em !important;
+            }
+            
+            .lightbox-prev {
+                left: 10px !important;
+            }
+            
+            .lightbox-next {
+                right: 10px !important;
+            }
+            
+            .lightbox-close {
+                width: 40px !important;
+                height: 40px !important;
+                top: 10px !important;
+                right: 10px !important;
+            }
+            
+            .lightbox-thumbnail {
+                width: 60px !important;
+                height: 60px !important;
+            }
+            
+            .lightbox-img {
+                max-height: 70vh !important;
+            }
+        }
+        
+        /* Responsive mejorado */
+        @media (max-width: 968px) {
+            .hero-content-wrapper {
+                grid-template-columns: 1fr !important;
+                gap: 40px !important;
+                padding: 40px 30px !important;
+                text-align: center !important;
+            }
+            
+            .hero-photo-large {
+                height: 500px !important;
+                max-width: 100% !important;
+                margin: 0 auto !important;
+            }
+            
+            .hero-name-title {
+                font-size: clamp(2rem, 6vw, 3rem) !important;
+            }
+            
+            .hero-stats-container {
+                grid-template-columns: repeat(2, 1fr) !important;
+                justify-content: center !important;
+            }
+            
+            .hero-actions-container {
+                justify-content: center !important;
+                flex-direction: column !important;
+            }
+            
+            .btn-hero-contact,
+            .btn-hero-action {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+            
+            .content-section-card {
+                padding: 35px 25px !important;
+            }
+            
+            .section-card-header {
+                flex-direction: column !important;
+                text-align: center !important;
+                gap: 20px !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .modelo-hero-section {
+                padding: 60px 15px 40px !important;
+                min-height: auto !important;
+            }
+            
+            .hero-content-wrapper {
+                padding: 30px 20px !important;
+                border-radius: 25px !important;
+            }
+            
+            .hero-photo-large {
+                height: 400px !important;
+                border-radius: 20px !important;
+            }
+            
+            .hero-name-title {
+                font-size: clamp(1.75rem, 7vw, 2.5rem) !important;
+            }
+            
+            .hero-stats-container {
+                grid-template-columns: 1fr !important;
+                gap: 15px !important;
+            }
+            
+            .hero-stat-box {
+                width: 100% !important;
+                padding: 20px 25px !important;
+            }
+            
+            .hero-actions-container {
+                flex-direction: column !important;
+                gap: 12px !important;
+            }
+            
+            .btn-hero-contact,
+            .btn-hero-action {
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 16px 30px !important;
+            }
+            
+            .content-section-card {
+                padding: 30px 20px !important;
+                border-radius: 25px !important;
+            }
+            
+            .section-card-header {
+                flex-direction: column !important;
+                text-align: center !important;
+                gap: 20px !important;
+                margin-bottom: 25px !important;
+            }
+            
+            .section-icon-box {
+                width: 70px !important;
+                height: 70px !important;
+            }
+            
+            .contact-card-item {
+                padding: 25px 20px !important;
+                flex-direction: column !important;
+                text-align: center !important;
+                gap: 20px !important;
+            }
+            
+            .contact-icon-wrapper {
+                width: 80px !important;
+                height: 80px !important;
+                font-size: 3em !important;
+            }
+            
+            .contact-action-btn {
+                width: 50px !important;
+                height: 50px !important;
+            }
+            
+            .fotos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)) !important;
+                gap: 10px !important;
+            }
+            
+            .footer-content {
+                grid-template-columns: 1fr !important;
+                gap: 30px !important;
+            }
+            
+            .footer-modern {
+                padding: 40px 0 20px !important;
+            }
+        }
+    </style>
+</head>
+<body class="home-body">
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">Agencia Modelos</h1>
+            <nav>
+                <a href="/" class="nav-link">Home</a>
+                <a href="/contacto" class="nav-link">Contacto</a>
+                <a href="/login" class="nav-link">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div id="loadingModelo" class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Cargando información de la modelo...</p>
+        </div>
+
+        <div id="errorModelo" class="error-container" style="display: none;">
+            <p class="error-message"></p>
+            <button onclick="cargarModelo()" class="btn-retry">Intentar de nuevo</button>
+            <a href="/" class="btn-secondary">Volver al Home</a>
+        </div>
+
+        <div id="modeloDetalle" class="modelo-detalle-container" style="display: none;">
+            <!-- Hero Section -->
+            <section class="modelo-hero-section">
+                <div class="hero-back-button">
+                    <a href="/" class="btn-back-hero">← Volver al Home</a>
+                </div>
+                <div class="hero-content-wrapper">
+                    <div class="hero-photo-wrapper">
+                        <div id="modeloFoto" class="hero-photo-large">
+                            <span class="photo-placeholder">📷</span>
+                        </div>
+                        <!-- Galería de fotos -->
+                        <div id="fotosGaleria" class="fotos-galeria" style="display: none;">
+                            <div class="galeria-header">
+                                <h3>Galería de Fotos</h3>
+                            </div>
+                            <div id="fotosGrid" class="fotos-grid"></div>
+                        </div>
+                    </div>
+                    <div class="hero-info-wrapper">
+                        <div class="hero-badge-modelo">⭐ Modelo Profesional</div>
+                        <h1 id="modeloNombre" class="hero-name-title"></h1>
+                        <div id="modeloStats" class="hero-stats-container"></div>
+                        <div class="hero-actions-container">
+                            <a id="btnContactar" href="/contacto" class="btn-hero-contact">
+                                <span class="btn-icon">💬</span>
+                                <span>Contactar</span>
+                            </a>
+                            <a id="btnEmail" href="#" class="btn-hero-action" style="display: none;">
+                                <span class="btn-icon">✉️</span>
+                                <span>Email</span>
+                            </a>
+                            <a id="btnTelefono" href="#" class="btn-hero-action" style="display: none;">
+                                <span class="btn-icon">📱</span>
+                                <span>Llamar</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Content Sections -->
+            <section class="modelo-content-wrapper">
+                <div class="content-sections-container">
+                    <!-- Description Section -->
+                    <div id="modeloDescripcion" class="content-section-card" style="display: none;">
+                        <div class="section-card-header">
+                            <div class="section-icon-box">
+                                <span class="section-icon">✨</span>
+                            </div>
+                            <h2 class="section-card-title">Sobre mí</h2>
+                        </div>
+                        <div class="section-card-body">
+                            <div class="description-text-content">
+                                <p></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Section -->
+                    <div class="content-section-card">
+                        <div class="section-card-header">
+                            <div class="section-icon-box">
+                                <span class="section-icon">📞</span>
+                            </div>
+                            <h2 class="section-card-title">Información de Contacto</h2>
+                        </div>
+                        <div class="section-card-body">
+                            <div id="modeloContacto" class="contact-info-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Lightbox para Galería de Fotos -->
+    <div id="lightbox" class="lightbox" style="display: none;" role="dialog" aria-label="Galería de fotos" aria-modal="true" tabindex="-1">
+        <div class="lightbox-overlay" id="lightboxOverlay" onclick="if(event.target===this && window.cerrarLightbox)window.cerrarLightbox();"></div>
+        <button type="button" class="lightbox-close" id="lightboxCloseBtn" aria-label="Cerrar galería" onclick="if(window.cerrarLightbox){window.cerrarLightbox();}return false;">✕</button>
+        <button type="button" class="lightbox-prev" id="lightboxPrevBtn" aria-label="Foto anterior" onclick="if(window.fotoAnterior)window.fotoAnterior();">‹</button>
+        <button type="button" class="lightbox-next" id="lightboxNextBtn" aria-label="Foto siguiente" onclick="if(window.fotoSiguiente)window.fotoSiguiente();">›</button>
+        <div class="lightbox-content">
+            <img id="lightboxImage" src="" alt="Foto del modelo" class="lightbox-img">
+            <div class="lightbox-info">
+                <span id="lightboxCounter" class="lightbox-counter"></span>
+            </div>
+        </div>
+        <div class="lightbox-thumbnails" id="lightboxThumbnails"></div>
+    </div>
+
+    <footer class="footer-modern">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <h3 class="footer-logo">Agencia Modelos</h3>
+                    <p class="footer-tagline">Descubre el talento y profesionalismo</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-section">
+                        <h4 class="footer-title">Navegación</h4>
+                        <a href="/" class="footer-link">Home</a>
+                        <a href="/contacto" class="footer-link">Contacto</a>
+                        <a href="/login" class="footer-link">Admin</a>
+                    </div>
+                    <div class="footer-section">
+                        <h4 class="footer-title">Información</h4>
+                        <a href="/contacto" class="footer-link">Contáctanos</a>
+                        <a href="#" class="footer-link">Sobre Nosotros</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Agencia Modelos. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Función para escapar HTML y prevenir XSS (debe estar primero)
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Variables globales para lightbox
+        // Variables globales del lightbox
+        let indiceFotoActual = 0;
+        let isZoomed = false;
+        let zoomLevel = 1;
+        
+        // Función global para cerrar lightbox - DEFINIDA PRIMERO Y DE FORMA SIMPLE
+        window.cerrarLightbox = function() {
+            console.log('🔴 cerrarLightbox ejecutado');
+            try {
+                const lightbox = document.getElementById('lightbox');
+                if (lightbox) {
+                    // Múltiples métodos para asegurar que se cierre
+                    lightbox.style.display = 'none';
+                    lightbox.style.visibility = 'hidden';
+                    lightbox.style.opacity = '0';
+                    lightbox.removeAttribute('data-open');
+                    lightbox.blur(); // Remover focus
+                    document.body.style.overflow = '';
+                    document.body.style.position = '';
+                    
+                    // Resetear zoom
+                    if (typeof isZoomed !== 'undefined') {
+                        isZoomed = false;
+                        zoomLevel = 1;
+                    }
+                    const img = document.getElementById('lightboxImage');
+                    if (img) {
+                        img.style.transform = 'scale(1)';
+                        img.style.cursor = 'zoom-in';
+                    }
+                    console.log('✅ Lightbox cerrado correctamente');
+                } else {
+                    console.error('❌ No se encontró el elemento lightbox');
+                }
+            } catch (error) {
+                console.error('❌ Error al cerrar lightbox:', error);
+                // Fallback: intentar ocultar cualquier elemento con clase lightbox
+                const lightboxes = document.querySelectorAll('.lightbox');
+                lightboxes.forEach(lb => {
+                    lb.style.display = 'none';
+                });
+                document.body.style.overflow = '';
+            }
+            };
+        })();
+        
+        // Obtener ID del modelo de la URL
+        function getModeloId() {
+            const path = window.location.pathname;
+            const match = path.match(/\/modelo\/(\d+)/);
+            return match ? parseInt(match[1]) : null;
+        }
+
+        // Cargar información del modelo
+        async function cargarModelo() {
+            const modeloId = getModeloId();
+            const loadingContainer = document.getElementById('loadingModelo');
+            const errorContainer = document.getElementById('errorModelo');
+            const detalleContainer = document.getElementById('modeloDetalle');
+            const errorMessage = errorContainer ? errorContainer.querySelector('.error-message') : null;
+            
+            if (!loadingContainer || !errorContainer || !detalleContainer) {
+                console.error('Error: No se encontraron los elementos del DOM');
+                return;
+            }
+            
+            if (!modeloId) {
+                if (loadingContainer) loadingContainer.style.display = 'none';
+                if (errorMessage) errorMessage.textContent = 'ID de modelo no válido';
+                if (errorContainer) errorContainer.style.display = 'block';
+                return;
+            }
+
+            // Resetear estados
+            if (loadingContainer) loadingContainer.style.display = 'flex';
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (detalleContainer) detalleContainer.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/modelos/${modeloId}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Modelo no encontrada');
+                    }
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.message || 'Error al obtener modelo');
+                }
+                
+                if (!data.modelo) {
+                    throw new Error('Modelo no encontrada');
+                }
+                
+                // Mostrar información del modelo
+                mostrarModelo(data.modelo);
+                
+            } catch (error) {
+                console.error('Error cargando modelo:', error);
+                if (loadingContainer) loadingContainer.style.display = 'none';
+                if (errorMessage) {
+                    errorMessage.textContent = error.message || 'Error cargando información de la modelo. Por favor, intenta más tarde.';
+                }
+                if (errorContainer) errorContainer.style.display = 'block';
+            }
+        }
+
+        // Mostrar información del modelo
+        function mostrarModelo(modelo) {
+            const loadingContainer = document.getElementById('loadingModelo');
+            const detalleContainer = document.getElementById('modeloDetalle');
+            
+            if (!loadingContainer || !detalleContainer) {
+                console.error('Error: No se encontraron los elementos del DOM');
+                return;
+            }
+            
+            loadingContainer.style.display = 'none';
+            detalleContainer.style.display = 'block';
+            
+            // Debug: Verificar que el contenedor se muestre
+            console.log('Modelo cargado, mostrando detalle...');
+            console.log('Detalle container display:', window.getComputedStyle(detalleContainer).display);
+            console.log('Detalle container visible:', detalleContainer.offsetHeight > 0);
+
+            // Nombre
+            const nombreCompleto = modelo.nombre + (modelo.apellido ? ' ' + modelo.apellido : '');
+            const nombreElement = document.getElementById('modeloNombre');
+            if (nombreElement) {
+                nombreElement.textContent = nombreCompleto;
+            }
+
+            // Fotos - Mostrar primera como principal y resto en galería
+            const fotoContainer = document.getElementById('modeloFoto');
+            const fotosGaleria = document.getElementById('fotosGaleria');
+            const fotosGrid = document.getElementById('fotosGrid');
+            
+            // Obtener todas las fotos (de la nueva tabla o del campo foto antiguo)
+            const todasLasFotos = modelo.fotos && modelo.fotos.length > 0 
+                ? modelo.fotos.map(f => f.url || f) 
+                : (modelo.foto ? [modelo.foto] : []);
+            
+            if (fotoContainer) {
+                if (todasLasFotos.length > 0) {
+                    // Mostrar primera foto como principal
+                    fotoContainer.style.backgroundImage = `url('${escapeHtml(todasLasFotos[0])}')`;
+                    fotoContainer.innerHTML = '';
+                    
+                    // Si hay más fotos, mostrar galería
+                    if (todasLasFotos.length > 1 && fotosGaleria && fotosGrid) {
+                        fotosGaleria.style.display = 'block';
+                        fotosGrid.innerHTML = todasLasFotos.map((foto, index) => `
+                            <div class="foto-miniatura ${index === 0 ? 'active' : ''}" 
+                                 style="background-image: url('${escapeHtml(foto)}')"
+                                 data-foto-index="${index}"
+                                 data-foto-url="${escapeHtml(foto)}"
+                                 title="Click para cambiar foto principal | Doble click para ver en tamaño completo"
+                                 role="button"
+                                 aria-label="Foto ${index + 1}, doble click para ver en tamaño completo">
+                            </div>
+                        `).join('');
+                        
+                        // Agregar event listeners a las miniaturas
+                        const miniaturas = fotosGrid.querySelectorAll('.foto-miniatura');
+                        miniaturas.forEach((miniatura, index) => {
+                            const fotoUrl = miniatura.getAttribute('data-foto-url');
+                            
+                            // Click simple: cambiar foto principal
+                            miniatura.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                cambiarFotoPrincipal(fotoUrl, index);
+                            });
+                            
+                            // Doble click: abrir lightbox
+                            miniatura.addEventListener('dblclick', function(e) {
+                                e.stopPropagation();
+                                console.log('Doble click en miniatura, abriendo lightbox...');
+                                abrirLightbox(index);
+                            });
+                        });
+                    } else if (fotosGaleria) {
+                        fotosGaleria.style.display = 'none';
+                    }
+                    
+                    // Hacer la foto principal clickeable para abrir lightbox
+                    if (fotoContainer && todasLasFotos.length > 0) {
+                        fotoContainer.style.cursor = 'pointer';
+                        // Remover cualquier event listener anterior
+                        fotoContainer.onclick = null;
+                        // Agregar nuevo event listener
+                        fotoContainer.addEventListener('click', function() {
+                            console.log('Click en foto principal, abriendo lightbox...');
+                            abrirLightbox(0);
+                        });
+                        fotoContainer.title = 'Click para ver en tamaño completo';
+                        fotoContainer.setAttribute('role', 'button');
+                        fotoContainer.setAttribute('aria-label', 'Ver foto en tamaño completo');
+                    }
+                    
+                    // Guardar fotos globalmente para el lightbox
+                    window.todasLasFotosModelo = todasLasFotos;
+                    console.log('Fotos guardadas para lightbox:', window.todasLasFotosModelo);
+                    
+                    // Asegurar que la foto principal no abra lightbox si no hay fotos
+                    if (todasLasFotos.length === 0) {
+                        fotoContainer.onclick = null;
+                        fotoContainer.style.cursor = 'default';
+                    }
+                } else {
+                    fotoContainer.style.backgroundImage = 'none';
+                    fotoContainer.innerHTML = '<span class="photo-placeholder">📷</span>';
+                    if (fotosGaleria) fotosGaleria.style.display = 'none';
+                    // No hay fotos, no guardar array vacío
+                    window.todasLasFotosModelo = [];
+                }
+            }
+
+            // Estadísticas - Mejoradas visualmente
+            const statsContainer = document.getElementById('modeloStats');
+            if (statsContainer) {
+                const stats = [];
+                const icons = {
+                    edad: '🎂',
+                    altura: '📏',
+                    medidas: '📐',
+                    ciudad: '📍'
+                };
+                
+                if (modelo.edad) {
+                    stats.push(`
+                        <div class="hero-stat-box">
+                            <span class="hero-stat-label">${icons.edad} Edad</span>
+                            <span class="hero-stat-value">${escapeHtml(modelo.edad)} años</span>
+                        </div>
+                    `);
+                }
+                if (modelo.altura) {
+                    stats.push(`
+                        <div class="hero-stat-box">
+                            <span class="hero-stat-label">${icons.altura} Altura</span>
+                            <span class="hero-stat-value">${escapeHtml(modelo.altura)}</span>
+                        </div>
+                    `);
+                }
+                if (modelo.medidas) {
+                    stats.push(`
+                        <div class="hero-stat-box">
+                            <span class="hero-stat-label">${icons.medidas} Medidas</span>
+                            <span class="hero-stat-value">${escapeHtml(modelo.medidas)}</span>
+                        </div>
+                    `);
+                }
+                if (modelo.ciudad) {
+                    stats.push(`
+                        <div class="hero-stat-box">
+                            <span class="hero-stat-label">${icons.ciudad} Ciudad</span>
+                            <span class="hero-stat-value">${escapeHtml(modelo.ciudad)}</span>
+                        </div>
+                    `);
+                }
+                
+                statsContainer.innerHTML = stats.length > 0 ? stats.join('') : '<p style="color: var(--text-secondary); font-style: italic;">No hay información adicional disponible</p>';
+            }
+
+            // Descripción
+            const descripcionContainer = document.getElementById('modeloDescripcion');
+            if (descripcionContainer) {
+                if (modelo.descripcion) {
+                    descripcionContainer.style.display = 'block';
+                    const pElement = descripcionContainer.querySelector('p');
+                    if (pElement) {
+                        pElement.textContent = escapeHtml(modelo.descripcion);
+                    }
+                } else {
+                    descripcionContainer.style.display = 'none';
+                }
+            }
+
+            // Información de contacto
+            const contactoContainer = document.getElementById('modeloContacto');
+            if (contactoContainer) {
+                const contactos = [];
+                
+                if (modelo.email) {
+                    contactos.push(`
+                        <div class="contact-card-item">
+                            <div class="contact-icon-wrapper">✉️</div>
+                            <div class="contact-info-wrapper">
+                                <div class="contact-label-text">Email</div>
+                                <a href="mailto:${escapeHtml(modelo.email)}" class="contact-value-text">${escapeHtml(modelo.email)}</a>
+                            </div>
+                            <a href="mailto:${escapeHtml(modelo.email)}" class="contact-action-btn">→</a>
+                        </div>
+                    `);
+                }
+                if (modelo.telefono) {
+                    contactos.push(`
+                        <div class="contact-card-item">
+                            <div class="contact-icon-wrapper">📱</div>
+                            <div class="contact-info-wrapper">
+                                <div class="contact-label-text">Teléfono</div>
+                                <a href="tel:${escapeHtml(modelo.telefono)}" class="contact-value-text">${escapeHtml(modelo.telefono)}</a>
+                            </div>
+                            <a href="tel:${escapeHtml(modelo.telefono)}" class="contact-action-btn">→</a>
+                        </div>
+                    `);
+                }
+                
+                if (contactos.length > 0) {
+                    contactoContainer.innerHTML = contactos.join('');
+                } else {
+                    contactoContainer.innerHTML = '<div class="no-contact-message"><span class="no-contact-icon">📭</span><p>No hay información de contacto disponible</p></div>';
+                }
+            }
+
+            // Botones de acción
+            const btnContactar = document.getElementById('btnContactar');
+            const btnEmail = document.getElementById('btnEmail');
+            const btnTelefono = document.getElementById('btnTelefono');
+            
+            if (btnContactar) {
+                btnContactar.href = `/contacto?modelo=${encodeURIComponent(nombreCompleto)}`;
+            }
+            
+            if (modelo.email && btnEmail) {
+                btnEmail.href = `mailto:${escapeHtml(modelo.email)}`;
+                btnEmail.style.display = 'flex';
+            }
+            
+            if (modelo.telefono && btnTelefono) {
+                btnTelefono.href = `tel:${escapeHtml(modelo.telefono)}`;
+                btnTelefono.style.display = 'flex';
+            }
+        }
+
+        // Función para cambiar foto principal
+        function cambiarFotoPrincipal(url, index) {
+            const fotoContainer = document.getElementById('modeloFoto');
+            const miniaturas = document.querySelectorAll('.foto-miniatura');
+            
+            if (fotoContainer) {
+                fotoContainer.style.backgroundImage = `url('${escapeHtml(url)}')`;
+                fotoContainer.innerHTML = '';
+            }
+            
+            // Actualizar estado activo en miniaturas
+            miniaturas.forEach((min, i) => {
+                if (i === index) {
+                    min.classList.add('active');
+                } else {
+                    min.classList.remove('active');
+                }
+            });
+        }
+        
+        // Funciones del Lightbox
+        function abrirLightbox(index) {
+            console.log('abrirLightbox llamado con índice:', index);
+            console.log('Fotos disponibles:', window.todasLasFotosModelo);
+            
+            if (!window.todasLasFotosModelo || window.todasLasFotosModelo.length === 0) {
+                console.error('No hay fotos disponibles para el lightbox');
+                alert('No hay fotos disponibles para mostrar');
+                return;
+            }
+            
+            if (index < 0 || index >= window.todasLasFotosModelo.length) {
+                console.error('Índice inválido:', index, 'de', window.todasLasFotosModelo.length);
+                index = 0; // Usar primera foto como fallback
+            }
+            
+            indiceFotoActual = index;
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImage = document.getElementById('lightboxImage');
+            const lightboxCounter = document.getElementById('lightboxCounter');
+            const lightboxThumbnails = document.getElementById('lightboxThumbnails');
+            
+            console.log('Elementos del lightbox:', {
+                lightbox: !!lightbox,
+                lightboxImage: !!lightboxImage,
+                lightboxCounter: !!lightboxCounter,
+                lightboxThumbnails: !!lightboxThumbnails
+            });
+            
+            if (!lightbox) {
+                console.error('No se encontró el elemento lightbox');
+                return;
+            }
+            
+            if (!lightboxImage) {
+                console.error('No se encontró el elemento lightboxImage');
+                return;
+            }
+            
+            // Mostrar foto primero
+            mostrarFotoEnLightbox();
+            
+            // Configurar zoom y listeners de cierre INMEDIATAMENTE
+            setupZoomListener();
+            setupLightboxCloseListeners();
+            
+            // Mostrar lightbox
+            lightbox.style.display = 'flex';
+            lightbox.setAttribute('data-open', 'true');
+            document.body.style.overflow = 'hidden'; // Prevenir scroll
+            
+            // Forzar focus en el lightbox para que ESC funcione
+            setTimeout(() => {
+                lightbox.focus();
+            }, 50);
+            
+            // Crear miniaturas
+            if (lightboxThumbnails) {
+                if (window.todasLasFotosModelo.length > 1) {
+                    lightboxThumbnails.innerHTML = window.todasLasFotosModelo.map((foto, i) => `
+                        <div class="lightbox-thumbnail ${i === indiceFotoActual ? 'active' : ''}" 
+                             data-thumb-index="${i}"
+                             style="background-image: url('${escapeHtml(foto)}')"
+                             title="Foto ${i + 1}">
+                        </div>
+                    `).join('');
+                    
+                    // Agregar event listeners a las miniaturas del lightbox
+                    const thumbnails = lightboxThumbnails.querySelectorAll('.lightbox-thumbnail');
+                    thumbnails.forEach((thumb) => {
+                        thumb.addEventListener('click', function() {
+                            const thumbIndex = parseInt(thumb.getAttribute('data-thumb-index'));
+                            irAFoto(thumbIndex);
+                        });
+                    });
+                    
+                    lightboxThumbnails.style.display = 'flex';
+                } else {
+                    lightboxThumbnails.style.display = 'none';
+                }
+            }
+            
+            console.log('Lightbox abierto correctamente');
+        }
+        
+        // Alias para compatibilidad
+        function cerrarLightbox() {
+            window.cerrarLightbox();
+        }
+        
+        // Configurar event listeners para cerrar el lightbox - SIMPLIFICADO
+        function setupLightboxCloseListeners() {
+            const overlay = document.getElementById('lightboxOverlay');
+            const prevBtn = document.getElementById('lightboxPrevBtn');
+            const nextBtn = document.getElementById('lightboxNextBtn');
+            const closeBtn = document.getElementById('lightboxCloseBtn');
+            
+            // Botón de cerrar - MÚLTIPLES MÉTODOS
+            if (closeBtn) {
+                // Método 1: onclick directo (ya está en HTML, pero lo reforzamos)
+                closeBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('🖱️ onclick en botón cerrar');
+                    if (window.cerrarLightbox) {
+                        window.cerrarLightbox();
+                    }
+                    return false;
+                };
+                
+                // Método 2: addEventListener con capture
+                closeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('🖱️ addEventListener click en botón cerrar');
+                    if (window.cerrarLightbox) {
+                        window.cerrarLightbox();
+                    }
+                    return false;
+                }, true);
+                
+                // Método 3: mousedown como backup
+                closeBtn.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🖱️ mousedown en botón cerrar');
+                    if (window.cerrarLightbox) {
+                        window.cerrarLightbox();
+                    }
+                }, true);
+            }
+            
+            // Overlay - click fuera de la imagen (ya tiene onclick inline, pero lo reforzamos)
+            if (overlay) {
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) {
+                        console.log('🖱️ Click en overlay (addEventListener)');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (window.cerrarLightbox) {
+                            window.cerrarLightbox();
+                        }
+                    }
+                }, true);
+            }
+            
+            // Botones de navegación
+            if (prevBtn) {
+                prevBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.fotoAnterior) {
+                        window.fotoAnterior();
+                    } else if (typeof fotoAnterior === 'function') {
+                        fotoAnterior();
+                    }
+                };
+            }
+            
+            if (nextBtn) {
+                nextBtn.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.fotoSiguiente) {
+                        window.fotoSiguiente();
+                    } else if (typeof fotoSiguiente === 'function') {
+                        fotoSiguiente();
+                    }
+                };
+            }
+        }
+        
+        function mostrarFotoEnLightbox() {
+            console.log('mostrarFotoEnLightbox llamado, índice:', indiceFotoActual);
+            console.log('Fotos disponibles:', window.todasLasFotosModelo);
+            
+            if (!window.todasLasFotosModelo || window.todasLasFotosModelo.length === 0) {
+                console.error('No hay fotos disponibles');
+                // Cerrar lightbox si no hay fotos
+                window.cerrarLightbox();
+                return;
+            }
+            
+            if (indiceFotoActual < 0 || indiceFotoActual >= window.todasLasFotosModelo.length) {
+                console.error('Índice inválido:', indiceFotoActual);
+                return;
+            }
+            
+            const lightboxImage = document.getElementById('lightboxImage');
+            const lightboxCounter = document.getElementById('lightboxCounter');
+            const lightboxThumbnails = document.getElementById('lightboxThumbnails');
+            
+            if (lightboxImage) {
+                const fotoUrl = window.todasLasFotosModelo[indiceFotoActual];
+                console.log('Cargando foto:', fotoUrl);
+                
+                if (!fotoUrl || fotoUrl.trim() === '') {
+                    console.error('URL de foto vacía');
+                    lightboxImage.src = '';
+                    lightboxImage.alt = 'Foto no disponible';
+                } else {
+                    lightboxImage.src = fotoUrl;
+                    lightboxImage.alt = 'Foto del modelo';
+                    
+                    // Manejar errores de carga de imagen
+                    lightboxImage.onerror = function() {
+                        console.error('Error cargando imagen:', fotoUrl);
+                        this.src = '';
+                        this.alt = 'Error al cargar la imagen';
+                    };
+                    
+                    lightboxImage.onload = function() {
+                        console.log('Imagen cargada correctamente');
+                    };
+                }
+                
+                // Resetear zoom al cambiar de foto
+                isZoomed = false;
+                zoomLevel = 1;
+                lightboxImage.style.transform = 'scale(1)';
+                lightboxImage.style.cursor = 'zoom-in';
+            } else {
+                console.error('No se encontró el elemento lightboxImage');
+            }
+            
+            if (lightboxCounter) {
+                lightboxCounter.textContent = `${indiceFotoActual + 1} / ${window.todasLasFotosModelo.length}`;
+            }
+            
+            // Actualizar miniaturas activas
+            if (lightboxThumbnails) {
+                const thumbnails = lightboxThumbnails.querySelectorAll('.lightbox-thumbnail');
+                thumbnails.forEach((thumb, i) => {
+                    if (i === indiceFotoActual) {
+                        thumb.classList.add('active');
+                    } else {
+                        thumb.classList.remove('active');
+                    }
+                });
+            }
+        }
+        
+        function fotoAnterior() {
+            if (!window.todasLasFotosModelo || window.todasLasFotosModelo.length === 0) return;
+            indiceFotoActual = (indiceFotoActual - 1 + window.todasLasFotosModelo.length) % window.todasLasFotosModelo.length;
+            mostrarFotoEnLightbox();
+        }
+        
+        function fotoSiguiente() {
+            if (!window.todasLasFotosModelo || window.todasLasFotosModelo.length === 0) return;
+            indiceFotoActual = (indiceFotoActual + 1) % window.todasLasFotosModelo.length;
+            mostrarFotoEnLightbox();
+        }
+        
+        function irAFoto(index) {
+            console.log('irAFoto llamado con índice:', index);
+            if (!window.todasLasFotosModelo || window.todasLasFotosModelo.length === 0) {
+                console.error('No hay fotos disponibles');
+                return;
+            }
+            if (index < 0 || index >= window.todasLasFotosModelo.length) {
+                console.error('Índice inválido en irAFoto:', index, 'de', window.todasLasFotosModelo.length);
+                return;
+            }
+            indiceFotoActual = index;
+            mostrarFotoEnLightbox();
+        }
+        
+        // Hacer funciones globales para acceso desde HTML
+        window.fotoAnterior = fotoAnterior;
+        window.fotoSiguiente = fotoSiguiente;
+        window.irAFoto = irAFoto;
+        
+        // Navegación con teclado - MEJORADO
+        document.addEventListener('keydown', function(e) {
+            const lightbox = document.getElementById('lightbox');
+            const isOpen = lightbox && (lightbox.style.display === 'flex' || lightbox.getAttribute('data-open') === 'true');
+            
+            if (isOpen) {
+                if (e.key === 'Escape' || e.keyCode === 27) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    console.log('⌨️ Tecla ESC presionada');
+                    window.cerrarLightbox();
+                } else if (e.key === 'ArrowLeft' || e.keyCode === 37) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.fotoAnterior) {
+                        window.fotoAnterior();
+                    } else {
+                        fotoAnterior();
+                    }
+                } else if (e.key === 'ArrowRight' || e.keyCode === 39) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.fotoSiguiente) {
+                        window.fotoSiguiente();
+                    } else {
+                        fotoSiguiente();
+                    }
+                }
+            }
+        }, true); // Usar capture phase
+        
+        // Función para manejar zoom
+        function toggleZoom() {
+            const lightboxImage = document.getElementById('lightboxImage');
+            if (!lightboxImage) return;
+            
+            if (!isZoomed) {
+                // Zoom in
+                zoomLevel = 2;
+                lightboxImage.style.transform = `scale(${zoomLevel})`;
+                lightboxImage.style.cursor = 'zoom-out';
+                isZoomed = true;
+                console.log('🔍 Zoom activado');
+            } else {
+                // Zoom out
+                zoomLevel = 1;
+                lightboxImage.style.transform = 'scale(1)';
+                lightboxImage.style.cursor = 'zoom-in';
+                isZoomed = false;
+                console.log('🔍 Zoom desactivado');
+            }
+        }
+        
+        // Agregar event listener para zoom (se agrega cuando se abre el lightbox)
+        function setupZoomListener() {
+            const lightboxImage = document.getElementById('lightboxImage');
+            if (lightboxImage) {
+                // Remover listeners anteriores
+                const newImage = lightboxImage.cloneNode(true);
+                lightboxImage.parentNode.replaceChild(newImage, lightboxImage);
+                
+                // Agregar nuevo listener
+                const currentImage = document.getElementById('lightboxImage');
+                if (currentImage) {
+                    currentImage.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        toggleZoom();
+                    });
+                }
+            }
+        }
+        
+        // Cargar modelo al iniciar cuando el DOM esté listo
+        (function() {
+            try {
+                console.log('Inicializando página de detalle de modelo...');
+                const modeloId = getModeloId();
+                console.log('ID del modelo:', modeloId);
+                
+                if (!modeloId) {
+                    console.error('No se pudo obtener el ID del modelo de la URL');
+                    const errorContainer = document.getElementById('errorModelo');
+                    const loadingContainer = document.getElementById('loadingModelo');
+                    if (errorContainer && loadingContainer) {
+                        loadingContainer.style.display = 'none';
+                        const errorMessage = errorContainer.querySelector('.error-message');
+                        if (errorMessage) {
+                            errorMessage.textContent = 'ID de modelo no válido en la URL';
+                        }
+                        errorContainer.style.display = 'block';
+                    }
+                    return;
+                }
+                
+                function initCarga() {
+                    try {
+                        console.log('Iniciando carga de modelo...');
+                        cargarModelo();
+                    } catch (error) {
+                        console.error('Error en initCarga:', error);
+                        const errorContainer = document.getElementById('errorModelo');
+                        const loadingContainer = document.getElementById('loadingModelo');
+                        if (errorContainer && loadingContainer) {
+                            loadingContainer.style.display = 'none';
+                            const errorMessage = errorContainer.querySelector('.error-message');
+                            if (errorMessage) {
+                                errorMessage.textContent = 'Error al inicializar: ' + error.message;
+                            }
+                            errorContainer.style.display = 'block';
+                        }
+                    }
+                }
+                
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initCarga);
+                } else {
+                    // DOM ya está listo
+                    console.log('DOM ya está listo, iniciando carga de modelo...');
+                    // Usar setTimeout para asegurar que todos los elementos estén disponibles
+                    setTimeout(initCarga, 0);
+                }
+            } catch (error) {
+                console.error('Error en inicialización:', error);
+                const errorContainer = document.getElementById('errorModelo');
+                const loadingContainer = document.getElementById('loadingModelo');
+                if (errorContainer && loadingContainer) {
+                    loadingContainer.style.display = 'none';
+                    const errorMessage = errorContainer.querySelector('.error-message');
+                    if (errorMessage) {
+                        errorMessage.textContent = 'Error crítico: ' + error.message;
+                    }
+                    errorContainer.style.display = 'block';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
