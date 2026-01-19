@@ -609,8 +609,23 @@ app.post('/api/admin/modelos/bulk', requireAuth, requireCsrf, async (req, res) =
       return res.status(400).json({ success: false, message: 'action inválida (activate|deactivate|delete)' });
     }
 
-    const activa = normalizedAction === 'activate';
-    const result = await modelosDB.setActivaMany(cleanIds, activa);
+    let result = { changes: 0 };
+    if (normalizedAction === 'delete') {
+      if (typeof modelosDB.hardDeleteMany === 'function') {
+        result = await modelosDB.hardDeleteMany(cleanIds);
+      } else {
+        // Fallback: borrar uno por uno
+        for (const id of cleanIds) {
+          // Preferir hardDelete si existe
+          if (typeof modelosDB.hardDelete === 'function') await modelosDB.hardDelete(id);
+          else await modelosDB.delete(id);
+          result.changes += 1;
+        }
+      }
+    } else {
+      const activa = normalizedAction === 'activate';
+      result = await modelosDB.setActivaMany(cleanIds, activa);
+    }
 
     auditLogSafe(req, { event_type: 'admin_modelos_bulk', severity: 'info', meta: { action: normalizedAction, count: cleanIds.length } });
     res.json({
@@ -621,7 +636,7 @@ app.post('/api/admin/modelos/bulk', requireAuth, requireCsrf, async (req, res) =
           ? 'Modelos activadas'
           : normalizedAction === 'deactivate'
             ? 'Modelos desactivadas'
-            : 'Modelos eliminadas'
+            : 'Modelos eliminadas definitivamente'
     });
   } catch (error) {
     res.status(500).json({
@@ -774,9 +789,14 @@ app.delete('/api/admin/modelos/:id', requireAuth, requireCsrf, async (req, res) 
       });
     }
     
-    await modelosDB.delete(modeloId);
-    auditLogSafe(req, { event_type: 'admin_modelo_delete', severity: 'warn', meta: { modeloId } });
-    res.json({ success: true, message: 'Modelo desactivada (soft delete) exitosamente' });
+    if (typeof modelosDB.hardDelete === 'function') {
+      await modelosDB.hardDelete(modeloId);
+    } else {
+      // Fallback: borrar como se pueda (en SQLite viejo esto desactiva)
+      await modelosDB.delete(modeloId);
+    }
+    auditLogSafe(req, { event_type: 'admin_modelo_delete', severity: 'warn', meta: { modeloId, hard: true } });
+    res.json({ success: true, message: 'Modelo eliminada definitivamente' });
   } catch (error) {
     res.status(500).json({ 
       success: false, 

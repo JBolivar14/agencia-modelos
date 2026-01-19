@@ -18,8 +18,8 @@ function Admin() {
   const [selectedModeloIds, setSelectedModeloIds] = useState(new Set());
   const [modeloQuery, setModeloQuery] = useState('');
   const [modeloCiudad, setModeloCiudad] = useState('');
-  // Por defecto mostramos activas para evitar confusión con "eliminar" (soft delete)
-  const [modeloActiva, setModeloActiva] = useState('true'); // all | true | false
+  // Permitir ver activas/inactivas como antes
+  const [modeloActiva, setModeloActiva] = useState('all'); // all | true | false
   const [modeloPage, setModeloPage] = useState(1);
   const [modeloPageSize, setModeloPageSize] = useState(20);
   const [modeloSortBy, setModeloSortBy] = useState('creado_en');
@@ -255,7 +255,7 @@ function Admin() {
         ? `¿Activar ${ids.length} modelo(s)?`
         : action === 'deactivate'
           ? `¿Desactivar ${ids.length} modelo(s)?`
-          : `¿Eliminar (desactivar) ${ids.length} modelo(s)?`;
+          : `¿Eliminar DEFINITIVAMENTE ${ids.length} modelo(s)?\n\nEsta acción borra la información de la base de datos y no se puede deshacer.`;
 
     if (!window.confirm(confirmText)) return;
 
@@ -484,6 +484,38 @@ function Admin() {
     }
   };
 
+  const hardDeleteModelo = async (id) => {
+    if (
+      !window.confirm(
+        '¿Eliminar DEFINITIVAMENTE esta modelo?\n\nEsta acción borra la información de la base de datos y no se puede deshacer.'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await csrfFetch(`/api/admin/modelos/${id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || `Error HTTP: ${response.status}`);
+      }
+
+      toast.success(data.message || 'Modelo eliminada definitivamente');
+
+      if (modeloPage > 1 && modelos.length <= 1) {
+        setModeloPage((p) => Math.max(1, p - 1));
+      } else {
+        cargarModelos();
+      }
+    } catch (error) {
+      console.error('Error eliminando modelo:', error);
+      toast.error(error.message || 'Error eliminando modelo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="admin-page">
       <header className="admin-header">
@@ -666,7 +698,7 @@ function Admin() {
                     Desactivar
                   </button>
                   <button className="btn-delete" disabled={selectedModeloIds.size === 0 || loading} onClick={() => bulkModelos('delete')}>
-                    Eliminar (desactivar)
+                    Eliminar (definitivo)
                   </button>
                 </div>
               </div>
@@ -742,9 +774,15 @@ function Admin() {
                               </button>
                               <button
                                 onClick={() => toggleActivaModelo(modelo.id, !modelo.activa)}
+                                className={modelo.activa ? 'btn-secondary' : 'btn-edit'}
+                              >
+                                {modelo.activa ? '⏸️ Desactivar' : '✅ Activar'}
+                              </button>
+                              <button
+                                onClick={() => hardDeleteModelo(modelo.id)}
                                 className="btn-delete"
                               >
-                                {modelo.activa ? '🗑️ Desactivar' : '✅ Activar'}
+                                🗑️ Eliminar
                               </button>
                             </td>
                           </tr>

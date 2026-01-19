@@ -240,6 +240,35 @@ const modelosDB = {
     if (error) throw error;
     return { changes: data?.length || 0 };
   },
+  hardDelete: async (id) => {
+    // Hard delete: borrar registro (y fotos asociadas)
+    // Nota: aunque exista FK cascade, borramos modelo_fotos explícitamente por seguridad
+    const modeloId = parseInt(id, 10);
+    if (!Number.isFinite(modeloId) || modeloId <= 0) return { changes: 0 };
+
+    const { error: fotosErr } = await supabase.from('modelo_fotos').delete().eq('modelo_id', modeloId);
+    if (fotosErr) throw fotosErr;
+
+    const { data, error } = await supabase.from('modelos').delete().eq('id', modeloId).select('id');
+    if (error) throw error;
+    return { changes: data?.length || 0 };
+  },
+  hardDeleteMany: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return { changes: 0 };
+
+    const cleanIds = [...new Set(ids)]
+      .map((x) => parseInt(x, 10))
+      .filter((x) => Number.isFinite(x) && x > 0);
+
+    if (cleanIds.length === 0) return { changes: 0 };
+
+    const { error: fotosErr } = await supabase.from('modelo_fotos').delete().in('modelo_id', cleanIds);
+    if (fotosErr) throw fotosErr;
+
+    const { data, error } = await supabase.from('modelos').delete().in('id', cleanIds).select('id');
+    if (error) throw error;
+    return { changes: data?.length || 0 };
+  },
   setActivaMany: async (ids, activa) => {
     if (!Array.isArray(ids) || ids.length === 0) return { changes: 0 };
 

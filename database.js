@@ -290,6 +290,61 @@ const modelosDB = {
       });
     });
   },
+  hardDelete: (id) => {
+    return new Promise((resolve, reject) => {
+      const modeloId = parseInt(id, 10);
+      if (!Number.isFinite(modeloId) || modeloId <= 0) {
+        resolve({ changes: 0 });
+        return;
+      }
+
+      db.serialize(() => {
+        // Borrar fotos asociadas primero (más seguro si FK no está activo)
+        db.run('DELETE FROM modelo_fotos WHERE modelo_id = ?', [modeloId], function (err1) {
+          if (err1) {
+            reject(err1);
+            return;
+          }
+          db.run('DELETE FROM modelos WHERE id = ?', [modeloId], function (err2) {
+            if (err2) reject(err2);
+            else resolve({ changes: this.changes || 0 });
+          });
+        });
+      });
+    });
+  },
+  hardDeleteMany: (ids) => {
+    return new Promise((resolve, reject) => {
+      if (!Array.isArray(ids) || ids.length === 0) {
+        resolve({ changes: 0 });
+        return;
+      }
+
+      const cleanIds = [...new Set(ids)]
+        .map((x) => parseInt(x, 10))
+        .filter((x) => Number.isFinite(x) && x > 0);
+
+      if (cleanIds.length === 0) {
+        resolve({ changes: 0 });
+        return;
+      }
+
+      const placeholders = cleanIds.map(() => '?').join(',');
+
+      db.serialize(() => {
+        db.run(`DELETE FROM modelo_fotos WHERE modelo_id IN (${placeholders})`, cleanIds, function (err1) {
+          if (err1) {
+            reject(err1);
+            return;
+          }
+          db.run(`DELETE FROM modelos WHERE id IN (${placeholders})`, cleanIds, function (err2) {
+            if (err2) reject(err2);
+            else resolve({ changes: this.changes || 0 });
+          });
+        });
+      });
+    });
+  },
   setActivaMany: (ids, activa) => {
     return new Promise((resolve, reject) => {
       if (!Array.isArray(ids) || ids.length === 0) {
