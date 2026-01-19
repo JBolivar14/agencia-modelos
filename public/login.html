@@ -14,7 +14,12 @@
     <div class="container">
         <div class="card login-card">
             <h1>🔐 Loguearte</h1>
-            <p class="subtitle">Si ya estás registrado, logueate acá. Si no, creá tu cuenta.</p>
+            <p class="subtitle" id="subtitleText">Si ya estás registrado, iniciá sesión. Si no, registrate para crear tu cuenta.</p>
+
+            <div class="login-switch" style="display:flex; gap:8px; margin: 16px 0;">
+                <button type="button" id="btnModeLogin" class="btn-secondary" style="flex:1;">Iniciar sesión</button>
+                <button type="button" id="btnModeRegister" class="btn-secondary" style="flex:1;">Registrarse</button>
+            </div>
             
             <form id="loginForm">
                 <div class="form-group">
@@ -48,6 +53,35 @@
                 
                 <div id="message" class="message"></div>
             </form>
+
+            <form id="registerForm" style="display:none;">
+                <div class="form-group">
+                    <label for="regNombre">Nombre completo</label>
+                    <input type="text" id="regNombre" name="regNombre" required placeholder="Tu nombre" autocomplete="name">
+                </div>
+
+                <div class="form-group">
+                    <label for="regEmail">Email</label>
+                    <input type="email" id="regEmail" name="regEmail" required placeholder="tuemail@ejemplo.com" autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="regTelefono">Teléfono</label>
+                    <input type="tel" id="regTelefono" name="regTelefono" placeholder="Opcional" autocomplete="tel">
+                </div>
+
+                <div class="form-group">
+                    <label for="regMensaje">Mensaje</label>
+                    <input type="text" id="regMensaje" name="regMensaje" placeholder="Opcional">
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <span id="regSubmitText">Crear mi cuenta</span>
+                    <span id="regSubmitLoader" class="loader" style="display: none;"></span>
+                </button>
+
+                <div id="regMessage" class="message"></div>
+            </form>
             
             <div class="login-footer">
                 <a href="/" class="back-link">← Volver al inicio</a>
@@ -66,6 +100,28 @@
         }
 
         checkAuth();
+
+        // Cambiar modo login/registro (sin revelar roles)
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const subtitleText = document.getElementById('subtitleText');
+        const btnModeLogin = document.getElementById('btnModeLogin');
+        const btnModeRegister = document.getElementById('btnModeRegister');
+
+        function setMode(mode) {
+            if (mode === 'register') {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                subtitleText.textContent = 'Completá tus datos y te enviaremos un email para confirmar tu dirección.';
+            } else {
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                subtitleText.textContent = 'Si ya estás registrado, iniciá sesión. Si no, registrate para crear tu cuenta.';
+            }
+        }
+
+        btnModeLogin.addEventListener('click', () => setMode('login'));
+        btnModeRegister.addEventListener('click', () => setMode('register'));
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -105,6 +161,54 @@
                     }, 1000);
                 } else {
                     messageDiv.textContent = data.message || 'Usuario o contraseña incorrectos';
+                    messageDiv.className = 'message error';
+                }
+            } catch (error) {
+                messageDiv.textContent = 'Error de conexión. Por favor, intenta nuevamente.';
+                messageDiv.className = 'message error';
+            } finally {
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitLoader.style.display = 'none';
+            }
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.querySelector('#registerForm .btn-submit');
+            const submitText = document.getElementById('regSubmitText');
+            const submitLoader = document.getElementById('regSubmitLoader');
+            const messageDiv = document.getElementById('regMessage');
+
+            submitBtn.disabled = true;
+            submitText.style.display = 'none';
+            submitLoader.style.display = 'inline-block';
+            messageDiv.textContent = '';
+            messageDiv.className = 'message';
+
+            const payload = {
+                nombre: document.getElementById('regNombre').value,
+                email: document.getElementById('regEmail').value,
+                telefono: document.getElementById('regTelefono').value,
+                empresa: null,
+                mensaje: document.getElementById('regMensaje').value || 'Registro'
+            };
+
+            try {
+                const response = await fetch('/api/contacto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    messageDiv.textContent = data.message || '¡Listo! Revisá tu email para confirmar.';
+                    messageDiv.className = 'message success';
+                    document.getElementById('registerForm').reset();
+                } else {
+                    messageDiv.textContent = data.message || 'No se pudo enviar tu información';
                     messageDiv.className = 'message error';
                 }
             } catch (error) {

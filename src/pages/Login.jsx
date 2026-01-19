@@ -4,15 +4,15 @@ import { toast } from '../utils/toast';
 import './Login.css';
 
 function Login() {
-  const [mode, setMode] = useState('admin'); // admin | modelo
-  const [username, setUsername] = useState(''); // admin: username/email
-  const [password, setPassword] = useState(''); // admin password
+  const [mode, setMode] = useState('login'); // login | register
+  const [username, setUsername] = useState(''); // login: username/email
+  const [password, setPassword] = useState(''); // login password
 
-  // Registro de modelo (público)
-  const [modeloNombre, setModeloNombre] = useState('');
-  const [modeloEmail, setModeloEmail] = useState('');
-  const [modeloTelefono, setModeloTelefono] = useState('');
-  const [modeloMensaje, setModeloMensaje] = useState('');
+  // Registro público (modelo / postulante)
+  const [registroNombre, setRegistroNombre] = useState('');
+  const [registroEmail, setRegistroEmail] = useState('');
+  const [registroTelefono, setRegistroTelefono] = useState('');
+  const [registroMensaje, setRegistroMensaje] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -74,17 +74,17 @@ function Login() {
     }
   };
 
-  const handleModeloRegistro = async (e) => {
+  const handleRegistro = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       const payload = {
-        nombre: modeloNombre,
-        email: modeloEmail,
-        telefono: modeloTelefono,
+        nombre: registroNombre,
+        email: registroEmail,
+        telefono: registroTelefono,
         empresa: null,
-        mensaje: modeloMensaje || 'Registro de modelo'
+        mensaje: registroMensaje || 'Registro'
       };
 
       const response = await fetch('/api/contacto', {
@@ -101,10 +101,10 @@ function Login() {
       const data = await response.json();
       if (data.success) {
         toast.success(data.message || '¡Listo! Revisá tu email para confirmar.');
-        setModeloNombre('');
-        setModeloEmail('');
-        setModeloTelefono('');
-        setModeloMensaje('');
+        setRegistroNombre('');
+        setRegistroEmail('');
+        setRegistroTelefono('');
+        setRegistroMensaje('');
       } else {
         toast.error(data.message || 'No se pudo enviar tu información');
       }
@@ -122,10 +122,10 @@ function Login() {
         <div className="card login-card">
           <h1>🔐 Loguearte</h1>
           <p className="subtitle">
-            Si ya estás registrado, logueate acá. Si no, creá tu cuenta.
-            {mode === 'modelo' && (
+            Si ya estás registrado, iniciá sesión. Si no, registrate para crear tu cuenta.
+            {mode === 'register' && (
               <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.95rem', opacity: 0.9 }}>
-                (Te vamos a enviar un email para confirmar tu dirección)
+                Te vamos a enviar un email para confirmar tu dirección.
               </span>
             )}
           </p>
@@ -133,23 +133,23 @@ function Login() {
           <div className="login-switch" role="tablist" aria-label="Login o registro">
             <button
               type="button"
-              className={`login-switch-btn ${mode === 'admin' ? 'active' : ''}`}
-              onClick={() => setMode('admin')}
+              className={`login-switch-btn ${mode === 'login' ? 'active' : ''}`}
+              onClick={() => setMode('login')}
               disabled={loading}
             >
-              Admin
+              Iniciar sesión
             </button>
             <button
               type="button"
-              className={`login-switch-btn ${mode === 'modelo' ? 'active' : ''}`}
-              onClick={() => setMode('modelo')}
+              className={`login-switch-btn ${mode === 'register' ? 'active' : ''}`}
+              onClick={() => setMode('register')}
               disabled={loading}
             >
-              Modelo
+              Registrarse
             </button>
           </div>
           
-          {mode === 'admin' ? (
+          {mode === 'login' ? (
             <form onSubmit={handleLogin}>
               <div className="form-group">
                 <label htmlFor="username">Usuario o email</label>
@@ -193,60 +193,60 @@ function Login() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleModeloRegistro}>
+            <form onSubmit={handleRegistro}>
               <div className="form-group">
-                <label htmlFor="modeloNombre">Nombre completo</label>
+                <label htmlFor="registroNombre">Nombre completo</label>
                 <input
                   type="text"
-                  id="modeloNombre"
-                  name="modeloNombre"
+                  id="registroNombre"
+                  name="registroNombre"
                   required
                   placeholder="Tu nombre"
                   autoComplete="name"
-                  value={modeloNombre}
-                  onChange={(e) => setModeloNombre(e.target.value)}
+                  value={registroNombre}
+                  onChange={(e) => setRegistroNombre(e.target.value)}
                   disabled={loading}
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="modeloEmail">Email</label>
+                <label htmlFor="registroEmail">Email</label>
                 <input
                   type="email"
-                  id="modeloEmail"
-                  name="modeloEmail"
+                  id="registroEmail"
+                  name="registroEmail"
                   required
                   placeholder="tuemail@ejemplo.com"
                   autoComplete="email"
-                  value={modeloEmail}
-                  onChange={(e) => setModeloEmail(e.target.value)}
+                  value={registroEmail}
+                  onChange={(e) => setRegistroEmail(e.target.value)}
                   disabled={loading}
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="modeloTelefono">Teléfono</label>
+                <label htmlFor="registroTelefono">Teléfono</label>
                 <input
                   type="tel"
-                  id="modeloTelefono"
-                  name="modeloTelefono"
+                  id="registroTelefono"
+                  name="registroTelefono"
                   placeholder="Opcional"
                   autoComplete="tel"
-                  value={modeloTelefono}
-                  onChange={(e) => setModeloTelefono(e.target.value)}
+                  value={registroTelefono}
+                  onChange={(e) => setRegistroTelefono(e.target.value)}
                   disabled={loading}
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="modeloMensaje">Mensaje</label>
+                <label htmlFor="registroMensaje">Mensaje</label>
                 <input
                   type="text"
-                  id="modeloMensaje"
-                  name="modeloMensaje"
+                  id="registroMensaje"
+                  name="registroMensaje"
                   placeholder="Opcional"
-                  value={modeloMensaje}
-                  onChange={(e) => setModeloMensaje(e.target.value)}
+                  value={registroMensaje}
+                  onChange={(e) => setRegistroMensaje(e.target.value)}
                   disabled={loading}
                 />
               </div>
