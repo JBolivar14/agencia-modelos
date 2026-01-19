@@ -104,14 +104,73 @@ const modelosDB = {
     if (error) throw error;
     return data || [];
   },
-  getAllAdmin: async () => {
-    const { data, error } = await supabase
-      .from('modelos')
-      .select('*')
-      .order('creado_en', { ascending: false });
+  getAllAdmin: async (options = {}) => {
+    const hasOptions =
+      options &&
+      (options.q ||
+        options.ciudad ||
+        options.activa !== undefined ||
+        options.page ||
+        options.pageSize ||
+        options.sortBy ||
+        options.sortDir);
 
+    // Compat: si no hay opciones, devolver todo como antes
+    if (!hasOptions) {
+      const { data, error } = await supabase
+        .from('modelos')
+        .select('*')
+        .order('creado_en', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    }
+
+    const q = typeof options.q === 'string' ? options.q.trim() : '';
+    const ciudad = typeof options.ciudad === 'string' ? options.ciudad.trim() : '';
+    const activa = options.activa;
+
+    const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
+    const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(100, Math.max(1, parseInt(options.pageSize, 10))) : 20;
+
+    const allowedSort = new Set(['creado_en', 'nombre', 'ciudad', 'edad']);
+    const sortBy = allowedSort.has(options.sortBy) ? options.sortBy : 'creado_en';
+    const sortDir = String(options.sortDir || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase
+      .from('modelos')
+      .select('*', { count: 'exact' });
+
+    if (typeof activa === 'boolean') {
+      query = query.eq('activa', activa);
+    }
+
+    if (ciudad) {
+      query = query.ilike('ciudad', `%${ciudad}%`);
+    }
+
+    if (q) {
+      const qSafe = q.replace(/,/g, ' ');
+      query = query.or(
+        [
+          `nombre.ilike.%${qSafe}%`,
+          `apellido.ilike.%${qSafe}%`,
+          `email.ilike.%${qSafe}%`,
+          `telefono.ilike.%${qSafe}%`,
+          `ciudad.ilike.%${qSafe}%`
+        ].join(',')
+      );
+    }
+
+    query = query.order(sortBy, { ascending: sortDir === 'asc' }).range(from, to);
+
+    const { data, error, count } = await query;
     if (error) throw error;
-    return data || [];
+
+    return { rows: data || [], total: count || 0 };
   },
   getById: async (id) => {
     const { data, error } = await supabase
@@ -180,19 +239,96 @@ const modelosDB = {
 
     if (error) throw error;
     return { changes: data?.length || 0 };
+  },
+  setActivaMany: async (ids, activa) => {
+    if (!Array.isArray(ids) || ids.length === 0) return { changes: 0 };
+
+    const cleanIds = [...new Set(ids)]
+      .map((x) => parseInt(x, 10))
+      .filter((x) => Number.isFinite(x) && x > 0);
+
+    if (cleanIds.length === 0) return { changes: 0 };
+
+    const { data, error } = await supabase
+      .from('modelos')
+      .update({ activa: !!activa })
+      .in('id', cleanIds)
+      .select('id');
+
+    if (error) throw error;
+    return { changes: data?.length || 0 };
   }
 };
 
 // Funciones para contactos
 const contactosDB = {
-  getAll: async () => {
-    const { data, error } = await supabase
-      .from('contactos')
-      .select('*')
-      .order('fecha', { ascending: false });
+  getAll: async (options = {}) => {
+    const hasOptions =
+      options &&
+      (options.q ||
+        options.from ||
+        options.to ||
+        options.page ||
+        options.pageSize ||
+        options.sortBy ||
+        options.sortDir);
 
+    // Compat: si no hay opciones, devolver todo como antes
+    if (!hasOptions) {
+      const { data, error } = await supabase
+        .from('contactos')
+        .select('*')
+        .order('fecha', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    }
+
+    const q = typeof options.q === 'string' ? options.q.trim() : '';
+    const qSafe = q.replace(/,/g, ' ');
+    const from = typeof options.from === 'string' ? options.from.trim() : '';
+    const to = typeof options.to === 'string' ? options.to.trim() : '';
+
+    const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
+    const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(100, Math.max(1, parseInt(options.pageSize, 10))) : 20;
+
+    const allowedSort = new Set(['fecha', 'nombre', 'email']);
+    const sortBy = allowedSort.has(options.sortBy) ? options.sortBy : 'fecha';
+    const sortDir = String(options.sortDir || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+    const fromIdx = (page - 1) * pageSize;
+    const toIdx = fromIdx + pageSize - 1;
+
+    let query = supabase
+      .from('contactos')
+      .select('*', { count: 'exact' });
+
+    if (from) {
+      query = query.gte('fecha', `${from}T00:00:00.000Z`);
+    }
+
+    if (to) {
+      query = query.lte('fecha', `${to}T23:59:59.999Z`);
+    }
+
+    if (qSafe) {
+      query = query.or(
+        [
+          `nombre.ilike.%${qSafe}%`,
+          `email.ilike.%${qSafe}%`,
+          `telefono.ilike.%${qSafe}%`,
+          `empresa.ilike.%${qSafe}%`,
+          `mensaje.ilike.%${qSafe}%`
+        ].join(',')
+      );
+    }
+
+    query = query.order(sortBy, { ascending: sortDir === 'asc' }).range(fromIdx, toIdx);
+
+    const { data, error, count } = await query;
     if (error) throw error;
-    return data || [];
+
+    return { rows: data || [], total: count || 0 };
   },
   getById: async (id) => {
     const { data, error } = await supabase

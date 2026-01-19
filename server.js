@@ -3,6 +3,8 @@ const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
+const crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
 
 // Cargar variables de entorno desde .env en desarrollo/local
 if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
@@ -43,6 +45,31 @@ const { validateContacto, validateModelo, validateLogin } = require('./middlewar
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'modelos';
+const MAX_SIGNED_UPLOADS = 10;
+
+function createSupabaseAdminClient() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Supabase no configurado (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
+  }
+  return createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } });
+}
+
+function getImageExtension(filename, mimeType) {
+  const ext = (path.extname(filename || '') || '').toLowerCase();
+  const allowed = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+  if (allowed.has(ext)) return ext;
+
+  const type = String(mimeType || '').toLowerCase();
+  if (type === 'image/jpeg') return '.jpg';
+  if (type === 'image/png') return '.png';
+  if (type === 'image/webp') return '.webp';
+  if (type === 'image/gif') return '.gif';
+  return '.jpg';
+}
 
 // Middleware
 app.use(bodyParser.json());
@@ -247,7 +274,21 @@ app.get('/api/modelos/:id', async (req, res) => {
 // API - Modelos (admin - todos)
 app.get('/api/admin/modelos', requireAuth, async (req, res) => {
   try {
-    const modelos = await modelosDB.getAllAdmin();
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    const ciudad = typeof req.query.ciudad === 'string' ? req.query.ciudad : '';
+
+    let activa;
+    if (req.query.activa === 'true') activa = true;
+    if (req.query.activa === 'false') activa = false;
+
+    const page = Number.isFinite(Number(req.query.page)) ? parseInt(req.query.page, 10) : 1;
+    const pageSize = Number.isFinite(Number(req.query.pageSize)) ? parseInt(req.query.pageSize, 10) : 20;
+    const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : 'creado_en';
+    const sortDir = typeof req.query.sortDir === 'string' ? req.query.sortDir : 'desc';
+
+    const result = await modelosDB.getAllAdmin({ q, ciudad, activa, page, pageSize, sortBy, sortDir });
+    const modelos = Array.isArray(result) ? result : (result?.rows || []);
+    const total = Array.isArray(result) ? modelos.length : (result?.total ?? modelos.length);
     
     // Agregar fotos a cada modelo
     for (let modelo of modelos) {
@@ -255,11 +296,134 @@ app.get('/api/admin/modelos', requireAuth, async (req, res) => {
       modelo.fotos = fotos || [];
     }
     
-    res.json({ success: true, modelos });
+    const safePage = Math.max(1, page || 1);
+    const safePageSize = Math.min(100, Math.max(1, pageSize || 20));
+    res.json({
+      success: true,
+      modelos,
+      pagination: {
+        page: safePage,
+        pageSize: safePageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / safePageSize))
+      }
+    });
   } catch (error) {
     res.status(500).json({ 
       success: false, 
       message: 'Error obteniendo modelos: ' + error.message 
+    });
+  }
+});
+
+// API - Supabase Storage: crear signed upload URLs (admin)
+// Nota: el upload se hace directo desde el navegador a Storage usando signedUrl (evita límites de body en serverless)
+app.post('/api/admin/storage/modelo-fotos/signed-urls', requireAuth, async (req, res) => {
+  try {
+    if (!useSupabase) {
+      return res.status(400).json({ success: false, message: 'Supabase no está habilitado en este entorno' });
+    }
+
+    const { files } = req.body || {};
+    if (!Array.isArray(files) || files.length === 0) {
+      return res.status(400).json({ success: false, message: 'files debe ser un array con al menos un elemento' });
+    }
+    if (files.length > MAX_SIGNED_UPLOADS) {
+      return res.status(400).json({ success: false, message: `Máximo ${MAX_SIGNED_UPLOADS} archivos por request` });
+    }
+
+    const supabase = createSupabaseAdminClient();
+
+    const now = new Date();
+    const yyyy = String(now.getUTCFullYear());
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+
+    const items = [];
+    for (const f of files) {
+      const originalName = typeof f?.name === 'string' ? f.name : 'image.jpg';
+      const mimeType = typeof f?.type === 'string' ? f.type : 'image/jpeg';
+
+      if (!mimeType.startsWith('image/')) {
+        return res.status(400).json({ success: false, message: 'Solo se permiten imágenes' });
+      }
+
+      const ext = getImageExtension(originalName, mimeType);
+      const objectPath = `${yyyy}/${mm}/${crypto.randomUUID()}${ext}`;
+      const fullPath = `${objectPath}`;
+
+      const { data: signed, error: signError } = await supabase
+        .storage
+        .from(STORAGE_BUCKET)
+        .createSignedUploadUrl(fullPath, { upsert: false });
+
+      if (signError || !signed?.signedUrl) {
+        throw new Error(signError?.message || 'Error creando signed upload URL');
+      }
+
+      const { data: publicData } = supabase
+        .storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(fullPath);
+
+      items.push({
+        name: originalName,
+        contentType: mimeType,
+        path: fullPath,
+        signedUrl: signed.signedUrl,
+        publicUrl: publicData?.publicUrl || null
+      });
+    }
+
+    res.json({ success: true, bucket: STORAGE_BUCKET, items });
+  } catch (error) {
+    console.error('Error creando signed upload URLs:', error);
+    res.status(500).json({ success: false, message: 'Error creando signed upload URLs: ' + error.message });
+  }
+});
+
+// API - Acciones masivas de modelos (admin)
+app.post('/api/admin/modelos/bulk', requireAuth, async (req, res) => {
+  try {
+    const { action, ids } = req.body || {};
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'ids debe ser un array con al menos un elemento' });
+    }
+
+    const cleanIds = [...new Set(ids)]
+      .map((x) => parseInt(x, 10))
+      .filter((x) => Number.isFinite(x) && x > 0);
+
+    if (cleanIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'ids inválidos' });
+    }
+
+    if (cleanIds.length > 200) {
+      return res.status(400).json({ success: false, message: 'Demasiados ids (máximo 200 por operación)' });
+    }
+
+    const normalizedAction = String(action || '').toLowerCase();
+    if (!['activate', 'deactivate', 'delete'].includes(normalizedAction)) {
+      return res.status(400).json({ success: false, message: 'action inválida (activate|deactivate|delete)' });
+    }
+
+    const activa = normalizedAction === 'activate';
+    const result = await modelosDB.setActivaMany(cleanIds, activa);
+
+    res.json({
+      success: true,
+      changes: result?.changes || 0,
+      message:
+        normalizedAction === 'activate'
+          ? 'Modelos activadas'
+          : normalizedAction === 'deactivate'
+            ? 'Modelos desactivadas'
+            : 'Modelos eliminadas'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error ejecutando acción masiva: ' + error.message
     });
   }
 });
@@ -455,8 +619,32 @@ app.post('/api/contacto', validateContacto, async (req, res) => {
 // API - Obtener contactos (admin)
 app.get('/api/admin/contactos', requireAuth, async (req, res) => {
   try {
-    const contactos = await contactosDB.getAll();
-    res.json({ success: true, contactos });
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    const from = typeof req.query.from === 'string' ? req.query.from : '';
+    const to = typeof req.query.to === 'string' ? req.query.to : '';
+
+    const page = Number.isFinite(Number(req.query.page)) ? parseInt(req.query.page, 10) : 1;
+    const pageSize = Number.isFinite(Number(req.query.pageSize)) ? parseInt(req.query.pageSize, 10) : 20;
+    const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : 'fecha';
+    const sortDir = typeof req.query.sortDir === 'string' ? req.query.sortDir : 'desc';
+
+    const result = await contactosDB.getAll({ q, from, to, page, pageSize, sortBy, sortDir });
+    const contactos = Array.isArray(result) ? result : (result?.rows || []);
+    const total = Array.isArray(result) ? contactos.length : (result?.total ?? contactos.length);
+
+    const safePage = Math.max(1, page || 1);
+    const safePageSize = Math.min(100, Math.max(1, pageSize || 20));
+
+    res.json({
+      success: true,
+      contactos,
+      pagination: {
+        page: safePage,
+        pageSize: safePageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / safePageSize))
+      }
+    });
   } catch (error) {
     res.status(500).json({ 
       success: false, 

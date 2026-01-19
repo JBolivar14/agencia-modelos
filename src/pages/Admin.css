@@ -142,6 +142,28 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+.btn-secondary {
+  padding: 0.75rem 1.5rem;
+  background: #e5e7eb;
+  color: #111827;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .qr-url-display {
   margin-top: 2rem;
   padding: 1.5rem;

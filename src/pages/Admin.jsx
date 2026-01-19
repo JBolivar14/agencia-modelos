@@ -10,6 +10,37 @@ function Admin() {
   const [contactos, setContactos] = useState([]);
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Filtros/paginación de modelos
+  const [selectedModeloIds, setSelectedModeloIds] = useState(new Set());
+  const [modeloQuery, setModeloQuery] = useState('');
+  const [modeloCiudad, setModeloCiudad] = useState('');
+  const [modeloActiva, setModeloActiva] = useState('all'); // all | true | false
+  const [modeloPage, setModeloPage] = useState(1);
+  const [modeloPageSize, setModeloPageSize] = useState(20);
+  const [modeloSortBy, setModeloSortBy] = useState('creado_en');
+  const [modeloSortDir, setModeloSortDir] = useState('desc');
+  const [modelosPagination, setModelosPagination] = useState({
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 1
+  });
+
+  // Filtros/paginación de contactos
+  const [contactoQuery, setContactoQuery] = useState('');
+  const [contactoFrom, setContactoFrom] = useState(''); // YYYY-MM-DD
+  const [contactoTo, setContactoTo] = useState(''); // YYYY-MM-DD
+  const [contactoPage, setContactoPage] = useState(1);
+  const [contactoPageSize, setContactoPageSize] = useState(20);
+  const [contactoSortBy, setContactoSortBy] = useState('fecha');
+  const [contactoSortDir, setContactoSortDir] = useState('desc');
+  const [contactosPagination, setContactosPagination] = useState({
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 1
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,12 +55,42 @@ function Admin() {
 
   useEffect(() => {
     if (activeTab === 'modelos') {
-      cargarModelos();
+      // Al entrar al tab, arrancar desde la primera página
+      setModeloPage(1);
+      setSelectedModeloIds(new Set());
     } else if (activeTab === 'contactos') {
-      cargarContactos();
+      setContactoPage(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // Si cambia el set de resultados, limpiar selección de ids que ya no existen
+  useEffect(() => {
+    if (activeTab !== 'modelos') return;
+    setSelectedModeloIds((prev) => {
+      const validIds = new Set(modelos.map((m) => m.id).filter(Boolean));
+      const next = new Set([...prev].filter((id) => validIds.has(id)));
+      return next;
+    });
+  }, [activeTab, modelos]);
+
+  useEffect(() => {
+    if (activeTab !== 'modelos') return;
+    const t = setTimeout(() => {
+      cargarModelos();
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, modeloQuery, modeloCiudad, modeloActiva, modeloPage, modeloPageSize, modeloSortBy, modeloSortDir]);
+
+  useEffect(() => {
+    if (activeTab !== 'contactos') return;
+    const t = setTimeout(() => {
+      cargarContactos();
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, contactoQuery, contactoFrom, contactoTo, contactoPage, contactoPageSize, contactoSortBy, contactoSortDir]);
 
   const checkAuth = async () => {
     try {
@@ -49,7 +110,20 @@ function Admin() {
   const cargarModelos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/modelos', {
+
+      const params = new URLSearchParams();
+      if (modeloQuery.trim()) params.set('q', modeloQuery.trim());
+      if (modeloCiudad.trim()) params.set('ciudad', modeloCiudad.trim());
+      if (modeloActiva === 'true') params.set('activa', 'true');
+      if (modeloActiva === 'false') params.set('activa', 'false');
+      params.set('page', String(modeloPage));
+      params.set('pageSize', String(modeloPageSize));
+      params.set('sortBy', modeloSortBy);
+      params.set('sortDir', modeloSortDir);
+
+      const url = `/api/admin/modelos?${params.toString()}`;
+
+      const response = await fetch(url, {
         credentials: 'include',
       });
       
@@ -61,6 +135,12 @@ function Admin() {
       const data = await response.json();
       if (data.success) {
         setModelos(data.modelos || []);
+        setModelosPagination({
+          page: data.pagination?.page || modeloPage,
+          pageSize: data.pagination?.pageSize || modeloPageSize,
+          total: data.pagination?.total || 0,
+          totalPages: data.pagination?.totalPages || 1
+        });
       } else {
         toast.error(data.message || 'Error cargando modelos');
       }
@@ -76,10 +156,91 @@ function Admin() {
     }
   };
 
+  const toggleSelectModelo = (id) => {
+    setSelectedModeloIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllModelosOnPage = (checked) => {
+    const pageIds = modelos.map((m) => m.id).filter(Boolean);
+    setSelectedModeloIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        pageIds.forEach((id) => next.add(id));
+      } else {
+        pageIds.forEach((id) => next.delete(id));
+      }
+      return next;
+    });
+  };
+
+  const bulkModelos = async (action) => {
+    const ids = Array.from(selectedModeloIds);
+    if (ids.length === 0) {
+      toast.info('No hay modelos seleccionadas');
+      return;
+    }
+
+    const confirmText =
+      action === 'activate'
+        ? `¿Activar ${ids.length} modelo(s)?`
+        : action === 'deactivate'
+          ? `¿Desactivar ${ids.length} modelo(s)?`
+          : `¿Eliminar (desactivar) ${ids.length} modelo(s)?`;
+
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/modelos/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action, ids })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || `Error HTTP: ${response.status}`);
+      }
+
+      toast.success(data.message || 'Acción masiva completada');
+      setSelectedModeloIds(new Set());
+
+      const selectedOnPageCount = modelos.filter((m) => selectedModeloIds.has(m.id)).length;
+      if (modeloPage > 1 && modelos.length > 0 && selectedOnPageCount === modelos.length) {
+        setModeloPage((p) => Math.max(1, p - 1));
+      } else {
+        cargarModelos();
+      }
+    } catch (error) {
+      console.error('Error en acción masiva:', error);
+      toast.error(error.message || 'Error ejecutando acción masiva');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const cargarContactos = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/contactos', {
+
+      const params = new URLSearchParams();
+      if (contactoQuery.trim()) params.set('q', contactoQuery.trim());
+      if (contactoFrom) params.set('from', contactoFrom);
+      if (contactoTo) params.set('to', contactoTo);
+      params.set('page', String(contactoPage));
+      params.set('pageSize', String(contactoPageSize));
+      params.set('sortBy', contactoSortBy);
+      params.set('sortDir', contactoSortDir);
+
+      const url = `/api/admin/contactos?${params.toString()}`;
+
+      const response = await fetch(url, {
         credentials: 'include',
       });
       
@@ -91,6 +252,12 @@ function Admin() {
       const data = await response.json();
       if (data.success) {
         setContactos(data.contactos || []);
+        setContactosPagination({
+          page: data.pagination?.page || contactoPage,
+          pageSize: data.pagination?.pageSize || contactoPageSize,
+          total: data.pagination?.total || 0,
+          totalPages: data.pagination?.totalPages || 1
+        });
       } else {
         toast.error(data.message || 'Error cargando contactos');
       }
@@ -184,7 +351,13 @@ function Admin() {
       const data = await response.json();
       if (data.success) {
         toast.success('Modelo eliminado exitosamente');
-        cargarModelos();
+
+        // Si era el último de la página y no es la primera, retroceder
+        if (modeloPage > 1 && modelos.length <= 1) {
+          setModeloPage(prev => Math.max(1, prev - 1));
+        } else {
+          cargarModelos();
+        }
       } else {
         toast.error(data.message || 'Error eliminando modelo');
       }
@@ -278,6 +451,102 @@ function Admin() {
               >
                 ➕ Agregar Nuevo Modelo
               </button>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                  alignItems: 'center'
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="Buscar (nombre, email, teléfono, ciudad...)"
+                  value={modeloQuery}
+                  onChange={(e) => {
+                    setModeloQuery(e.target.value);
+                    setModeloPage(1);
+                    setSelectedModeloIds(new Set());
+                  }}
+                  style={{ flex: '1 1 280px' }}
+                />
+
+                <input
+                  type="text"
+                  placeholder="Filtrar por ciudad"
+                  value={modeloCiudad}
+                  onChange={(e) => {
+                    setModeloCiudad(e.target.value);
+                    setModeloPage(1);
+                    setSelectedModeloIds(new Set());
+                  }}
+                  style={{ flex: '1 1 180px' }}
+                />
+
+                <select
+                  value={modeloActiva}
+                  onChange={(e) => {
+                    setModeloActiva(e.target.value);
+                    setModeloPage(1);
+                    setSelectedModeloIds(new Set());
+                  }}
+                >
+                  <option value="all">Todas</option>
+                  <option value="true">Activas</option>
+                  <option value="false">Inactivas</option>
+                </select>
+
+                <select
+                  value={modeloSortBy}
+                  onChange={(e) => {
+                    setModeloSortBy(e.target.value);
+                    setModeloPage(1);
+                    setSelectedModeloIds(new Set());
+                  }}
+                >
+                  <option value="creado_en">Orden: más nuevas</option>
+                  <option value="nombre">Orden: nombre</option>
+                  <option value="ciudad">Orden: ciudad</option>
+                  <option value="edad">Orden: edad</option>
+                </select>
+
+                <select value={modeloSortDir} onChange={(e) => setModeloSortDir(e.target.value)}>
+                  <option value="desc">Desc</option>
+                  <option value="asc">Asc</option>
+                </select>
+
+                <select
+                  value={modeloPageSize}
+                  onChange={(e) => {
+                    setModeloPageSize(parseInt(e.target.value, 10));
+                    setModeloPage(1);
+                    setSelectedModeloIds(new Set());
+                  }}
+                >
+                  <option value={10}>10 / pág</option>
+                  <option value={20}>20 / pág</option>
+                  <option value={50}>50 / pág</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                <div style={{ color: 'var(--text-secondary, #666)' }}>
+                  Seleccionadas: <strong>{selectedModeloIds.size}</strong>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button className="btn-secondary" disabled={selectedModeloIds.size === 0 || loading} onClick={() => bulkModelos('activate')}>
+                    Activar
+                  </button>
+                  <button className="btn-secondary" disabled={selectedModeloIds.size === 0 || loading} onClick={() => bulkModelos('deactivate')}>
+                    Desactivar
+                  </button>
+                  <button className="btn-delete" disabled={selectedModeloIds.size === 0 || loading} onClick={() => bulkModelos('delete')}>
+                    Eliminar
+                  </button>
+                </div>
+              </div>
               
               {loading ? (
                 <div className="loading-container">
@@ -291,6 +560,14 @@ function Admin() {
                   <table className="modelos-table">
                     <thead>
                       <tr>
+                        <th style={{ width: '42px' }}>
+                          <input
+                            type="checkbox"
+                            checked={modelos.length > 0 && modelos.every((m) => selectedModeloIds.has(m.id))}
+                            onChange={(e) => toggleSelectAllModelosOnPage(e.target.checked)}
+                            aria-label="Seleccionar todas en la página"
+                          />
+                        </th>
                         <th>Foto</th>
                         <th>Nombre</th>
                         <th>Ciudad</th>
@@ -306,6 +583,14 @@ function Admin() {
                           : modelo.foto;
                         return (
                           <tr key={modelo.id}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={selectedModeloIds.has(modelo.id)}
+                                onChange={() => toggleSelectModelo(modelo.id)}
+                                aria-label={`Seleccionar modelo ${modelo.nombre}`}
+                              />
+                            </td>
                             <td>
                               {primeraFoto ? (
                                 <img
@@ -346,6 +631,30 @@ function Admin() {
                   </table>
                 </div>
               )}
+
+              {!loading && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ color: 'var(--text-secondary, #666)' }}>
+                    Total: <strong>{modelosPagination.total}</strong> — Página <strong>{modelosPagination.page}</strong> de <strong>{modelosPagination.totalPages}</strong>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setModeloPage(p => Math.max(1, p - 1))}
+                      disabled={modelosPagination.page <= 1}
+                    >
+                      ← Anterior
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setModeloPage(p => Math.min(modelosPagination.totalPages || p + 1, p + 1))}
+                      disabled={modelosPagination.page >= modelosPagination.totalPages}
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -355,6 +664,76 @@ function Admin() {
           <div className="tab-content active">
             <div className="card">
               <h2>Contactos Recibidos</h2>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                  alignItems: 'center'
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="Buscar (nombre, email, teléfono, empresa, mensaje...)"
+                  value={contactoQuery}
+                  onChange={(e) => {
+                    setContactoQuery(e.target.value);
+                    setContactoPage(1);
+                  }}
+                  style={{ flex: '1 1 320px' }}
+                />
+
+                <input
+                  type="date"
+                  value={contactoFrom}
+                  onChange={(e) => {
+                    setContactoFrom(e.target.value);
+                    setContactoPage(1);
+                  }}
+                  title="Desde"
+                />
+
+                <input
+                  type="date"
+                  value={contactoTo}
+                  onChange={(e) => {
+                    setContactoTo(e.target.value);
+                    setContactoPage(1);
+                  }}
+                  title="Hasta"
+                />
+
+                <select
+                  value={contactoSortBy}
+                  onChange={(e) => {
+                    setContactoSortBy(e.target.value);
+                    setContactoPage(1);
+                  }}
+                >
+                  <option value="fecha">Orden: fecha</option>
+                  <option value="nombre">Orden: nombre</option>
+                  <option value="email">Orden: email</option>
+                </select>
+
+                <select value={contactoSortDir} onChange={(e) => setContactoSortDir(e.target.value)}>
+                  <option value="desc">Desc</option>
+                  <option value="asc">Asc</option>
+                </select>
+
+                <select
+                  value={contactoPageSize}
+                  onChange={(e) => {
+                    setContactoPageSize(parseInt(e.target.value, 10));
+                    setContactoPage(1);
+                  }}
+                >
+                  <option value={10}>10 / pág</option>
+                  <option value={20}>20 / pág</option>
+                  <option value={50}>50 / pág</option>
+                </select>
+              </div>
               
               {loading ? (
                 <div className="loading-container">
@@ -389,6 +768,30 @@ function Admin() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {!loading && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ color: 'var(--text-secondary, #666)' }}>
+                    Total: <strong>{contactosPagination.total}</strong> — Página <strong>{contactosPagination.page}</strong> de <strong>{contactosPagination.totalPages}</strong>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setContactoPage(p => Math.max(1, p - 1))}
+                      disabled={contactosPagination.page <= 1}
+                    >
+                      ← Anterior
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setContactoPage(p => Math.min(contactosPagination.totalPages || p + 1, p + 1))}
+                      disabled={contactosPagination.page >= contactosPagination.totalPages}
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

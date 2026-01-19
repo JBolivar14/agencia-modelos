@@ -10,6 +10,10 @@ function FormularioModelo() {
   
   const [loading, setLoading] = useState(false);
   const [loadingModelo, setLoadingModelo] = useState(isEdit);
+  const [uploadingMain, setUploadingMain] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [dragMain, setDragMain] = useState(false);
+  const [dragGallery, setDragGallery] = useState(false);
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -94,7 +98,14 @@ function FormularioModelo() {
   };
 
   const eliminarFoto = (index) => {
-    setFotos(prev => prev.filter((_, i) => i !== index));
+    setFotos(prev => {
+      const removed = prev[index];
+      const next = prev.filter((_, i) => i !== index);
+      if (removed && formData.foto === removed) {
+        setFormData((fd) => ({ ...fd, foto: next[0] || '' }));
+      }
+      return next;
+    });
   };
 
   const moverFoto = (index, direction) => {
@@ -106,6 +117,110 @@ function FormularioModelo() {
       const nuevasFotos = [...fotos];
       [nuevasFotos[index], nuevasFotos[index + 1]] = [nuevasFotos[index + 1], nuevasFotos[index]];
       setFotos(nuevasFotos);
+    }
+  };
+
+  const requestSignedUploadUrls = async (files) => {
+    const response = await fetch('/api/admin/storage/modelo-fotos/signed-urls', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        files: files.map((f) => ({ name: f.name, type: f.type }))
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || `Error HTTP: ${response.status}`);
+    }
+
+    if (!Array.isArray(data.items) || data.items.length !== files.length) {
+      throw new Error('Respuesta inválida del servidor (signed URLs)');
+    }
+
+    return data.items;
+  };
+
+  const uploadFilesToSupabaseStorage = async (files) => {
+    if (!files || files.length === 0) return [];
+
+    // Filtrar imágenes
+    const imageFiles = files.filter((f) => f && f.type && f.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      toast.error('Selecciona archivos de imagen (JPG/PNG/WebP/GIF)');
+      return [];
+    }
+
+    const signedItems = await requestSignedUploadUrls(imageFiles);
+
+    const uploadedUrls = [];
+    for (let i = 0; i < imageFiles.length; i++) {
+      const file = imageFiles[i];
+      const item = signedItems[i];
+
+      const putRes = await fetch(item.signedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream'
+        },
+        body: file
+      });
+
+      if (!putRes.ok) {
+        const txt = await putRes.text().catch(() => '');
+        throw new Error(`Error subiendo archivo (${file.name}): ${putRes.status} ${txt}`);
+      }
+
+      if (!item.publicUrl) {
+        throw new Error('No se pudo obtener publicUrl (revisa que el bucket sea público)');
+      }
+
+      uploadedUrls.push(item.publicUrl);
+    }
+
+    return uploadedUrls;
+  };
+
+  const handleUploadMain = async (fileList) => {
+    try {
+      const files = Array.from(fileList || []).slice(0, 1);
+      if (files.length === 0) return;
+      setUploadingMain(true);
+      const urls = await uploadFilesToSupabaseStorage(files);
+      if (urls[0]) {
+        setFormData((prev) => ({ ...prev, foto: urls[0] }));
+        toast.success('Foto principal subida');
+      }
+    } catch (error) {
+      console.error('Error subiendo foto principal:', error);
+      toast.error(error.message || 'Error subiendo foto principal');
+    } finally {
+      setUploadingMain(false);
+      setDragMain(false);
+    }
+  };
+
+  const handleUploadGallery = async (fileList) => {
+    try {
+      const files = Array.from(fileList || []);
+      if (files.length === 0) return;
+      setUploadingGallery(true);
+      const urls = await uploadFilesToSupabaseStorage(files);
+      if (urls.length > 0) {
+        setFotos((prev) => [...prev, ...urls]);
+        setFormData((prev) => {
+          if (prev.foto) return prev;
+          return { ...prev, foto: urls[0] };
+        });
+        toast.success(`${urls.length} foto(s) subida(s)`);
+      }
+    } catch (error) {
+      console.error('Error subiendo fotos:', error);
+      toast.error(error.message || 'Error subiendo fotos');
+    } finally {
+      setUploadingGallery(false);
+      setDragGallery(false);
     }
   };
 
@@ -299,6 +414,34 @@ function FormularioModelo() {
             {/* Foto Principal */}
             <div className="form-section">
               <h2>Foto Principal</h2>
+              <div
+                className={`upload-dropzone ${dragMain ? 'dragover' : ''} ${uploadingMain || loading ? 'disabled' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!uploadingMain && !loading) setDragMain(true);
+                }}
+                onDragLeave={() => setDragMain(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (uploadingMain || loading) return;
+                  setDragMain(false);
+                  handleUploadMain(e.dataTransfer.files);
+                }}
+              >
+                <div className="upload-dropzone-content">
+                  <div className="upload-title">Arrastrá una foto aquí</div>
+                  <div className="upload-subtitle">o seleccioná un archivo</div>
+                  <label className="btn-upload">
+                    {uploadingMain ? 'Subiendo...' : 'Seleccionar foto'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleUploadMain(e.target.files)}
+                      disabled={uploadingMain || loading}
+                    />
+                  </label>
+                </div>
+              </div>
               <div className="form-group">
                 <label htmlFor="foto">URL de Foto Principal</label>
                 <input
@@ -321,6 +464,36 @@ function FormularioModelo() {
             {/* Galería de Fotos */}
             <div className="form-section">
               <h2>Galería de Fotos</h2>
+
+              <div
+                className={`upload-dropzone ${dragGallery ? 'dragover' : ''} ${uploadingGallery || loading ? 'disabled' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (!uploadingGallery && !loading) setDragGallery(true);
+                }}
+                onDragLeave={() => setDragGallery(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (uploadingGallery || loading) return;
+                  setDragGallery(false);
+                  handleUploadGallery(e.dataTransfer.files);
+                }}
+              >
+                <div className="upload-dropzone-content">
+                  <div className="upload-title">Arrastrá fotos aquí</div>
+                  <div className="upload-subtitle">o seleccioná múltiples archivos</div>
+                  <label className="btn-upload">
+                    {uploadingGallery ? 'Subiendo...' : 'Seleccionar fotos'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleUploadGallery(e.target.files)}
+                      disabled={uploadingGallery || loading}
+                    />
+                  </label>
+                </div>
+              </div>
               
               <div className="fotos-input-group">
                 <input
@@ -350,6 +523,15 @@ function FormularioModelo() {
                       </div>
                       <div className="foto-url">{foto}</div>
                       <div className="foto-actions">
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, foto }))}
+                          disabled={loading}
+                          className="btn-move"
+                          title="Usar como foto principal"
+                        >
+                          ⭐
+                        </button>
                         <button
                           type="button"
                           onClick={() => moverFoto(index, 'up')}

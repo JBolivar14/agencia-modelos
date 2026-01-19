@@ -109,11 +109,91 @@ const modelosDB = {
       });
     });
   },
-  getAllAdmin: () => {
+  getAllAdmin: (options = {}) => {
     return new Promise((resolve, reject) => {
-      db.all('SELECT * FROM modelos ORDER BY creado_en DESC', (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
+      const hasOptions =
+        options &&
+        (options.q ||
+          options.ciudad ||
+          options.activa !== undefined ||
+          options.page ||
+          options.pageSize ||
+          options.sortBy ||
+          options.sortDir);
+
+      // Compat: si no hay opciones, devolver todo como antes
+      if (!hasOptions) {
+        db.all('SELECT * FROM modelos ORDER BY creado_en DESC', (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+        return;
+      }
+
+      const q = typeof options.q === 'string' ? options.q.trim().toLowerCase() : '';
+      const ciudad = typeof options.ciudad === 'string' ? options.ciudad.trim().toLowerCase() : '';
+      const activa = options.activa;
+
+      const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
+      const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(100, Math.max(1, parseInt(options.pageSize, 10))) : 20;
+
+      const allowedSort = {
+        creado_en: 'creado_en',
+        nombre: 'nombre',
+        ciudad: 'ciudad',
+        edad: 'edad'
+      };
+      const sortBy = allowedSort[options.sortBy] || 'creado_en';
+      const sortDir = String(options.sortDir || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+      const where = [];
+      const params = [];
+
+      if (typeof activa === 'boolean') {
+        where.push('activa = ?');
+        params.push(activa ? 1 : 0);
+      }
+
+      if (ciudad) {
+        where.push('LOWER(ciudad) LIKE ?');
+        params.push(`%${ciudad}%`);
+      }
+
+      if (q) {
+        where.push(
+          '(' +
+            [
+              'LOWER(nombre) LIKE ?',
+              'LOWER(apellido) LIKE ?',
+              'LOWER(email) LIKE ?',
+              'LOWER(telefono) LIKE ?',
+              'LOWER(ciudad) LIKE ?'
+            ].join(' OR ') +
+          ')'
+        );
+        const like = `%${q}%`;
+        params.push(like, like, like, like, like);
+      }
+
+      const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+      const offset = (page - 1) * pageSize;
+
+      db.get(`SELECT COUNT(*) as count FROM modelos ${whereSql}`, params, (countErr, row) => {
+        if (countErr) {
+          reject(countErr);
+          return;
+        }
+
+        const total = row?.count || 0;
+
+        db.all(
+          `SELECT * FROM modelos ${whereSql} ORDER BY ${sortBy} ${sortDir} LIMIT ? OFFSET ?`,
+          [...params, pageSize, offset],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve({ rows: rows || [], total });
+          }
+        );
       });
     });
   },
@@ -184,16 +264,124 @@ const modelosDB = {
         else resolve({ changes: this.changes });
       });
     });
+  },
+  setActivaMany: (ids, activa) => {
+    return new Promise((resolve, reject) => {
+      if (!Array.isArray(ids) || ids.length === 0) {
+        resolve({ changes: 0 });
+        return;
+      }
+
+      const cleanIds = [...new Set(ids)]
+        .map((x) => parseInt(x, 10))
+        .filter((x) => Number.isFinite(x) && x > 0);
+
+      if (cleanIds.length === 0) {
+        resolve({ changes: 0 });
+        return;
+      }
+
+      const placeholders = cleanIds.map(() => '?').join(',');
+      const value = activa ? 1 : 0;
+
+      db.run(
+        `UPDATE modelos SET activa = ? WHERE id IN (${placeholders})`,
+        [value, ...cleanIds],
+        function (err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes || 0 });
+        }
+      );
+    });
   }
 };
 
 // Funciones para contactos
 const contactosDB = {
-  getAll: () => {
+  getAll: (options = {}) => {
     return new Promise((resolve, reject) => {
-      db.all('SELECT * FROM contactos ORDER BY fecha DESC', (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
+      const hasOptions =
+        options &&
+        (options.q ||
+          options.from ||
+          options.to ||
+          options.page ||
+          options.pageSize ||
+          options.sortBy ||
+          options.sortDir);
+
+      // Compat: si no hay opciones, devolver todo como antes
+      if (!hasOptions) {
+        db.all('SELECT * FROM contactos ORDER BY fecha DESC', (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+        return;
+      }
+
+      const q = typeof options.q === 'string' ? options.q.trim().toLowerCase() : '';
+      const from = typeof options.from === 'string' ? options.from.trim() : '';
+      const to = typeof options.to === 'string' ? options.to.trim() : '';
+
+      const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
+      const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(100, Math.max(1, parseInt(options.pageSize, 10))) : 20;
+
+      const allowedSort = {
+        fecha: 'fecha',
+        nombre: 'nombre',
+        email: 'email'
+      };
+      const sortBy = allowedSort[options.sortBy] || 'fecha';
+      const sortDir = String(options.sortDir || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+      const where = [];
+      const params = [];
+
+      if (from) {
+        where.push('DATE(fecha) >= DATE(?)');
+        params.push(from);
+      }
+
+      if (to) {
+        where.push('DATE(fecha) <= DATE(?)');
+        params.push(to);
+      }
+
+      if (q) {
+        where.push(
+          '(' +
+            [
+              'LOWER(nombre) LIKE ?',
+              'LOWER(email) LIKE ?',
+              'LOWER(telefono) LIKE ?',
+              'LOWER(empresa) LIKE ?',
+              'LOWER(mensaje) LIKE ?'
+            ].join(' OR ') +
+          ')'
+        );
+        const like = `%${q}%`;
+        params.push(like, like, like, like, like);
+      }
+
+      const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+      const offset = (page - 1) * pageSize;
+
+      db.get(`SELECT COUNT(*) as count FROM contactos ${whereSql}`, params, (countErr, row) => {
+        if (countErr) {
+          reject(countErr);
+          return;
+        }
+
+        const total = row?.count || 0;
+
+        db.all(
+          `SELECT * FROM contactos ${whereSql} ORDER BY ${sortBy} ${sortDir} LIMIT ? OFFSET ?`,
+          [...params, pageSize, offset],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve({ rows: rows || [], total });
+          }
+        );
       });
     });
   },

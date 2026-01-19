@@ -28,6 +28,7 @@ Estas son opcionales pero puedes configurarlas:
 
 ```env
 PORT=3000
+SUPABASE_STORAGE_BUCKET=modelos
 ```
 
 ---
