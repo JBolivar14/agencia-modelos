@@ -7,8 +7,21 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
 
+// Cargar variables de entorno desde .env en desarrollo/local
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  require('dotenv').config();
+}
+
 // Usar Supabase si está configurado, sino usar SQLite
-const useSupabase = process.env.USE_SUPABASE === 'true' || process.env.SUPABASE_URL;
+const isTestEnv = process.env.NODE_ENV === 'test';
+const wantsSupabase = !isTestEnv && (process.env.USE_SUPABASE === 'true' || !!process.env.SUPABASE_URL);
+const hasSupabaseConfig = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+const useSupabase = wantsSupabase && hasSupabaseConfig;
+
+if (wantsSupabase && !hasSupabaseConfig) {
+  console.warn('⚠️  Supabase solicitado pero faltan variables de entorno.');
+  console.warn('   Requiere SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY. Usando SQLite como fallback.');
+}
 let modelosDB, contactosDB, usuariosDB, modeloFotosDB, initDatabase;
 
 if (useSupabase) {
@@ -159,14 +172,21 @@ app.get('/api/session', (req, res) => {
   }
 });
 
+// API - Logout
+app.get('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
+});
+
 // API - Modelos (público)
 app.get('/api/modelos', async (req, res) => {
   try {
     const modelos = await modelosDB.getAll();
     
     for (let modelo of modelos) {
-      const fotos = await modeloFotosDB.getByModeloId(modelo.id);
-      modelo.fotos = fotos || [];
+      const fotos = (await modeloFotosDB.getByModeloId(modelo.id)) || [];
+      modelo.fotos = fotos;
       if (!modelo.foto && fotos.length > 0) {
         modelo.foto = fotos[0].url;
       }

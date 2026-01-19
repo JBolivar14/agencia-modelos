@@ -12,6 +12,11 @@ const mockDatabase = {
     update: jest.fn(),
     delete: jest.fn()
   },
+  modeloFotosDB: {
+    getByModeloId: jest.fn(),
+    createMultiple: jest.fn(),
+    deleteByModeloId: jest.fn()
+  },
   contactosDB: {
     getAll: jest.fn(),
     getById: jest.fn(),

@@ -3,17 +3,24 @@ const bcrypt = require('bcrypt');
 
 // Configuración de Supabase desde variables de entorno
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.warn('⚠️  Variables de entorno de Supabase no configuradas. Usando valores por defecto.');
-  console.warn('   Configura SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env');
+  throw new Error(
+    'Variables de entorno de Supabase no configuradas. ' +
+    'Configura SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY.'
+  );
 }
 
 // Cliente de Supabase (usar service role para operaciones admin)
 const supabase = createClient(
-  supabaseUrl || 'https://tu-proyecto.supabase.co',
-  supabaseServiceKey || 'tu-key-aqui'
+  supabaseUrl,
+  supabaseServiceKey,
+  {
+    auth: {
+      persistSession: false
+    }
+  }
 );
 
 // Inicializar base de datos (crear usuario admin si no existe)

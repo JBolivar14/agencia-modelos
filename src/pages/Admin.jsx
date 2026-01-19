@@ -201,7 +201,7 @@ function Admin() {
           <h1>Panel de Administración</h1>
           <div className="admin-actions">
             {user && <span>{user.nombre || user.username}</span>}
-            <a href="/logout" className="btn-logout">Cerrar Sesión</a>
+            <a href="/api/logout" className="btn-logout">Cerrar Sesión</a>
           </div>
         </div>
       </header>

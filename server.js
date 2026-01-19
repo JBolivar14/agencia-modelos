@@ -4,8 +4,21 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
 
+// Cargar variables de entorno desde .env en desarrollo/local
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  require('dotenv').config();
+}
+
 // Usar Supabase si está configurado, sino usar SQLite
-const useSupabase = process.env.USE_SUPABASE === 'true' || process.env.SUPABASE_URL;
+const isTestEnv = process.env.NODE_ENV === 'test';
+const wantsSupabase = !isTestEnv && (process.env.USE_SUPABASE === 'true' || !!process.env.SUPABASE_URL);
+const hasSupabaseConfig = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+const useSupabase = wantsSupabase && hasSupabaseConfig;
+
+if (wantsSupabase && !hasSupabaseConfig) {
+  console.warn('⚠️  Supabase solicitado pero faltan variables de entorno.');
+  console.warn('   Requiere SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY. Usando SQLite como fallback.');
+}
 let modelosDB, contactosDB, usuariosDB, modeloFotosDB, initDatabase;
 
 if (useSupabase) {
@@ -91,54 +104,6 @@ if (require('fs').existsSync(distPath)) {
 }
 
 // Rutas de API (deben estar antes de las rutas de React)
-// Las rutas de API ya están definidas arriba
-
-// Ruta de logout
-app.get('/logout', (req, res) => {
-  req.session.destroy();
-  res.redirect('/login');
-});
-
-// Servir la app React para todas las rutas no-API
-// Si dist/ existe, servir React. Si no, redirigir a Vite en desarrollo
-const distIndexPath = path.join(__dirname, 'dist', 'index.html');
-if (require('fs').existsSync(distIndexPath)) {
-  app.get('*', (req, res) => {
-    // No servir React para rutas de API
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ success: false, message: 'Ruta no encontrada' });
-    }
-    res.sendFile(distIndexPath);
-  });
-} else {
-  // En desarrollo sin build, mostrar mensaje útil
-  app.get('*', (req, res) => {
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ success: false, message: 'Ruta no encontrada' });
-    }
-    res.send(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Agencia Modelos - Desarrollo</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
-            h1 { color: #0483B8; }
-            p { color: #666; margin: 20px 0; }
-            code { background: #f4f4f4; padding: 2px 8px; border-radius: 4px; }
-          </style>
-        </head>
-        <body>
-          <h1>🚀 Modo Desarrollo</h1>
-          <p>Para ver la aplicación React, ejecuta:</p>
-          <p><code>npm run dev</code></p>
-          <p>Luego accede a: <a href="http://localhost:5173">http://localhost:5173</a></p>
-          <p><strong>O</strong> ejecuta <code>npm run build</code> y luego <code>npm start</code></p>
-        </body>
-      </html>
-    `);
-  });
-}
 
 // API - Login
 app.post('/api/login', validateLogin, async (req, res) => {
@@ -203,6 +168,13 @@ app.get('/api/session', (req, res) => {
   }
 });
 
+// API - Logout
+app.get('/api/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
+});
+
 // API - Modelos (público)
 app.get('/api/modelos', async (req, res) => {
   try {
@@ -210,8 +182,8 @@ app.get('/api/modelos', async (req, res) => {
     
     // Agregar primera foto de cada modelo (para compatibilidad)
     for (let modelo of modelos) {
-      const fotos = await modeloFotosDB.getByModeloId(modelo.id);
-      modelo.fotos = fotos || [];
+      const fotos = (await modeloFotosDB.getByModeloId(modelo.id)) || [];
+      modelo.fotos = fotos;
       // Mantener compatibilidad: si hay fotos pero no hay foto principal, usar la primera
       if (!modelo.foto && fotos.length > 0) {
         modelo.foto = fotos[0].url;
@@ -288,6 +260,41 @@ app.get('/api/admin/modelos', requireAuth, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Error obteniendo modelos: ' + error.message 
+    });
+  }
+});
+
+// API - Obtener modelo individual (admin - para editar)
+app.get('/api/admin/modelos/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const modeloId = parseInt(id);
+
+    if (isNaN(modeloId) || modeloId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de modelo inválido'
+      });
+    }
+
+    const modelo = await modelosDB.getById(modeloId);
+
+    if (!modelo) {
+      return res.status(404).json({
+        success: false,
+        message: 'Modelo no encontrada'
+      });
+    }
+
+    const fotos = await modeloFotosDB.getByModeloId(modeloId);
+    modelo.fotos = fotos || [];
+
+    res.json({ success: true, modelo });
+  } catch (error) {
+    console.error('Error obteniendo modelo:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error obteniendo modelo. Por favor, intenta más tarde.'
     });
   }
 });
@@ -487,15 +494,62 @@ app.post('/api/admin/generar-qr', requireAuth, async (req, res) => {
   }
 });
 
-// Nota: Los archivos estáticos se sirven arriba, antes de las rutas de React
-
-// Inicializar base de datos
-initDatabase().catch(err => {
-  console.error('Error inicializando base de datos:', err);
+// Ruta de logout (compatibilidad)
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
 });
+
+// Servir la app React para todas las rutas no-API
+// Si dist/ existe, servir React. Si no, redirigir a Vite en desarrollo
+const distIndexPath = path.join(__dirname, 'dist', 'index.html');
+if (require('fs').existsSync(distIndexPath)) {
+  app.get('*', (req, res) => {
+    // No servir React para rutas de API
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ success: false, message: 'Ruta no encontrada' });
+    }
+    res.sendFile(distIndexPath);
+  });
+} else {
+  // En desarrollo sin build, mostrar mensaje útil
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ success: false, message: 'Ruta no encontrada' });
+    }
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Agencia Modelos - Desarrollo</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
+            h1 { color: #0483B8; }
+            p { color: #666; margin: 20px 0; }
+            code { background: #f4f4f4; padding: 2px 8px; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          <h1>🚀 Modo Desarrollo</h1>
+          <p>Para ver la aplicación React, ejecuta:</p>
+          <p><code>npm run dev</code></p>
+          <p>Luego accede a: <a href="http://localhost:5173">http://localhost:5173</a></p>
+          <p><strong>O</strong> ejecuta <code>npm run build</code> y luego <code>npm start</code></p>
+        </body>
+      </html>
+    `);
+  });
+}
+
+// Nota: Los archivos estáticos se sirven arriba, antes de las rutas de React
 
 // Función para iniciar el servidor
 function startServer() {
+  initDatabase().catch(err => {
+    console.error('Error inicializando base de datos:', err);
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
     const os = require('os');
     const networkInterfaces = os.networkInterfaces();
