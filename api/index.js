@@ -822,7 +822,7 @@ app.delete('/api/admin/modelos/:id', requireAuth, requireCsrf, async (req, res) 
     
     await modelosDB.delete(modeloId);
     auditLogSafe(req, { event_type: 'admin_modelo_delete', severity: 'warn', meta: { modeloId } });
-    res.json({ success: true, message: 'Modelo eliminado exitosamente' });
+    res.json({ success: true, message: 'Modelo desactivada (soft delete) exitosamente' });
   } catch (error) {
     res.status(500).json({ 
       success: false, 

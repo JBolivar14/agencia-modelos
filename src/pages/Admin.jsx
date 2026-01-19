@@ -18,7 +18,8 @@ function Admin() {
   const [selectedModeloIds, setSelectedModeloIds] = useState(new Set());
   const [modeloQuery, setModeloQuery] = useState('');
   const [modeloCiudad, setModeloCiudad] = useState('');
-  const [modeloActiva, setModeloActiva] = useState('all'); // all | true | false
+  // Por defecto mostramos activas para evitar confusión con "eliminar" (soft delete)
+  const [modeloActiva, setModeloActiva] = useState('true'); // all | true | false
   const [modeloPage, setModeloPage] = useState(1);
   const [modeloPageSize, setModeloPageSize] = useState(20);
   const [modeloSortBy, setModeloSortBy] = useState('creado_en');
@@ -440,30 +441,46 @@ function Admin() {
     }
   };
 
-  const eliminarModelo = async (id) => {
-    if (!window.confirm('¿Estás seguro de que quieres eliminar este modelo?')) {
-      return;
-    }
-    try {
-      const response = await csrfFetch(`/api/admin/modelos/${id}`, {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-      if (data.success) {
-        toast.success('Modelo eliminado exitosamente');
+  const toggleActivaModelo = async (id, nextActiva) => {
+    const willDeactivate = nextActiva === false;
+    const confirmMsg = willDeactivate
+      ? '¿Desactivar esta modelo?\n\nNota: no se borra de la base. Quedará como "Inactiva" y no será pública.'
+      : '¿Activar esta modelo?\n\nVolverá a estar visible públicamente.';
 
-        // Si era el último de la página y no es la primera, retroceder
-        if (modeloPage > 1 && modelos.length <= 1) {
-          setModeloPage(prev => Math.max(1, prev - 1));
-        } else {
-          cargarModelos();
-        }
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setLoading(true);
+
+      // Usamos el endpoint bulk (más claro: activa true/false)
+      const response = await csrfFetch('/api/admin/modelos/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: nextActiva ? 'activate' : 'deactivate',
+          ids: [id]
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || `Error HTTP: ${response.status}`);
+      }
+
+      toast.success(nextActiva ? 'Modelo activada' : 'Modelo desactivada');
+
+      // Si era el último de la página y no es la primera, retroceder
+      if (modeloPage > 1 && modelos.length <= 1) {
+        setModeloPage((prev) => Math.max(1, prev - 1));
       } else {
-        toast.error(data.message || 'Error eliminando modelo');
+        cargarModelos();
       }
     } catch (error) {
       console.error('Error eliminando modelo:', error);
-      toast.error('Error eliminando modelo');
+      toast.error(error.message || 'Error actualizando modelo');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -649,7 +666,7 @@ function Admin() {
                     Desactivar
                   </button>
                   <button className="btn-delete" disabled={selectedModeloIds.size === 0 || loading} onClick={() => bulkModelos('delete')}>
-                    Eliminar
+                    Eliminar (desactivar)
                   </button>
                 </div>
               </div>
@@ -724,10 +741,10 @@ function Admin() {
                                 ✏️ Editar
                               </button>
                               <button
-                                onClick={() => eliminarModelo(modelo.id)}
+                                onClick={() => toggleActivaModelo(modelo.id, !modelo.activa)}
                                 className="btn-delete"
                               >
-                                🗑️ Eliminar
+                                {modelo.activa ? '🗑️ Desactivar' : '✅ Activar'}
                               </button>
                             </td>
                           </tr>
