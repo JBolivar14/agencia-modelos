@@ -1,6 +1,8 @@
 -- ============================================
 -- Script de Migración a Supabase
 -- Ejecutar en el SQL Editor de Supabase
+-- IMPORTANTE: este script es para "primera instalación" (proyecto limpio).
+-- Si tu proyecto ya fue migrado, para agregar auditoría usá `supabase-audit-logs.sql`
 -- ============================================
 
 -- Tabla de usuarios (administradores)
@@ -49,17 +51,36 @@ CREATE TABLE IF NOT EXISTS contactos (
   fecha TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Tabla de auditoría (eventos de seguridad/operación)
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id BIGSERIAL PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  severity TEXT DEFAULT 'info',
+  actor_user_id BIGINT,
+  actor_username TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  path TEXT,
+  method TEXT,
+  meta JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Índices para mejorar rendimiento
 CREATE INDEX IF NOT EXISTS idx_modelos_activa ON modelos(activa);
 CREATE INDEX IF NOT EXISTS idx_modelo_fotos_modelo_id ON modelo_fotos(modelo_id);
 CREATE INDEX IF NOT EXISTS idx_contactos_fecha ON contactos(fecha);
 CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_severity ON audit_logs(severity);
 
 -- Habilitar Row Level Security (RLS)
 ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE modelos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE modelo_fotos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contactos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS básicas
 -- Permitir lectura pública de modelos activos
@@ -74,6 +95,10 @@ CREATE POLICY "Cualquiera puede crear contactos" ON contactos
 -- Por ahora, deshabilitamos RLS para contactos en lectura (se maneja en el backend)
 CREATE POLICY "Contactos visibles para servicio" ON contactos
   FOR SELECT USING (true);
+
+-- Audit logs: solo el backend (service role) debe leer/escribir
+CREATE POLICY "Solo servicio puede gestionar audit logs" ON audit_logs
+  FOR ALL USING (false);
 
 -- Los usuarios solo pueden ser gestionados por el servicio (backend)
 -- No permitir operaciones públicas en usuarios

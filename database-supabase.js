@@ -441,10 +441,89 @@ const modeloFotosDB = {
   }
 };
 
+// Funciones para auditoría
+const auditLogsDB = {
+  create: async (entry) => {
+    const payload = {
+      event_type: entry?.event_type || 'unknown',
+      severity: entry?.severity || 'info',
+      actor_user_id: entry?.actor_user_id ?? null,
+      actor_username: entry?.actor_username ?? null,
+      ip: entry?.ip ?? null,
+      user_agent: entry?.user_agent ?? null,
+      path: entry?.path ?? null,
+      method: entry?.method ?? null,
+      meta: entry?.meta ?? null
+    };
+
+    const { data, error } = await supabase
+      .from('audit_logs')
+      .insert(payload)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return { lastID: data?.id, changes: 1 };
+  },
+  getAllAdmin: async (options = {}) => {
+    const q = typeof options.q === 'string' ? options.q.trim() : '';
+    const qSafe = q.replace(/,/g, ' ');
+    const eventType = typeof options.eventType === 'string' ? options.eventType.trim() : '';
+    const severity = typeof options.severity === 'string' ? options.severity.trim() : '';
+    const from = typeof options.from === 'string' ? options.from.trim() : '';
+    const to = typeof options.to === 'string' ? options.to.trim() : '';
+
+    const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
+    const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(200, Math.max(1, parseInt(options.pageSize, 10))) : 50;
+    const fromIdx = (page - 1) * pageSize;
+    const toIdx = fromIdx + pageSize - 1;
+
+    let query = supabase
+      .from('audit_logs')
+      .select('*', { count: 'exact' });
+
+    if (eventType) {
+      query = query.eq('event_type', eventType);
+    }
+
+    if (severity) {
+      query = query.eq('severity', severity);
+    }
+
+    if (from) {
+      query = query.gte('created_at', `${from}T00:00:00.000Z`);
+    }
+
+    if (to) {
+      query = query.lte('created_at', `${to}T23:59:59.999Z`);
+    }
+
+    if (qSafe) {
+      query = query.or(
+        [
+          `event_type.ilike.%${qSafe}%`,
+          `actor_username.ilike.%${qSafe}%`,
+          `ip.ilike.%${qSafe}%`,
+          `path.ilike.%${qSafe}%`,
+          `method.ilike.%${qSafe}%`
+        ].join(',')
+      );
+    }
+
+    query = query.order('created_at', { ascending: false }).range(fromIdx, toIdx);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    return { rows: data || [], total: count || 0 };
+  }
+};
+
 module.exports = {
   initDatabase,
   usuariosDB,
   modelosDB,
   contactosDB,
-  modeloFotosDB
+  modeloFotosDB,
+  auditLogsDB
 };

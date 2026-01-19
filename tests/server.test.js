@@ -10,7 +10,8 @@ const mockDatabase = {
     getById: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
-    delete: jest.fn()
+    delete: jest.fn(),
+    setActivaMany: jest.fn()
   },
   modeloFotosDB: {
     getByModeloId: jest.fn(),
@@ -25,6 +26,10 @@ const mockDatabase = {
   usuariosDB: {
     getByUsername: jest.fn(),
     verifyPassword: jest.fn()
+  },
+  auditLogsDB: {
+    create: jest.fn(),
+    getAllAdmin: jest.fn()
   }
 };
 

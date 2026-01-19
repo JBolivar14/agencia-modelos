@@ -8,6 +8,7 @@ function Admin() {
   const [user, setUser] = useState(null);
   const [modelos, setModelos] = useState([]);
   const [contactos, setContactos] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -41,6 +42,19 @@ function Admin() {
     total: 0,
     totalPages: 1
   });
+
+  // Logs/auditoría
+  const [auditQuery, setAuditQuery] = useState('');
+  const [auditEventType, setAuditEventType] = useState('');
+  const [auditSeverity, setAuditSeverity] = useState('');
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize, setAuditPageSize] = useState(50);
+  const [auditPagination, setAuditPagination] = useState({
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    totalPages: 1
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,6 +74,8 @@ function Admin() {
       setSelectedModeloIds(new Set());
     } else if (activeTab === 'contactos') {
       setContactoPage(1);
+    } else if (activeTab === 'audit') {
+      setAuditPage(1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -91,6 +107,15 @@ function Admin() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, contactoQuery, contactoFrom, contactoTo, contactoPage, contactoPageSize, contactoSortBy, contactoSortDir]);
+
+  useEffect(() => {
+    if (activeTab !== 'audit') return;
+    const t = setTimeout(() => {
+      cargarAuditLogs();
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, auditQuery, auditEventType, auditSeverity, auditPage, auditPageSize]);
 
   const checkAuth = async () => {
     try {
@@ -273,6 +298,45 @@ function Admin() {
     }
   };
 
+  const cargarAuditLogs = async () => {
+    try {
+      setLoading(true);
+
+      const params = new URLSearchParams();
+      if (auditQuery.trim()) params.set('q', auditQuery.trim());
+      if (auditEventType.trim()) params.set('eventType', auditEventType.trim());
+      if (auditSeverity.trim()) params.set('severity', auditSeverity.trim());
+      params.set('page', String(auditPage));
+      params.set('pageSize', String(auditPageSize));
+
+      const url = `/api/admin/audit?${params.toString()}`;
+      const response = await fetch(url, { credentials: 'include' });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setAuditLogs(data.logs || []);
+        setAuditPagination({
+          page: data.pagination?.page || auditPage,
+          pageSize: data.pagination?.pageSize || auditPageSize,
+          total: data.pagination?.total || 0,
+          totalPages: data.pagination?.totalPages || 1
+        });
+      } else {
+        toast.error(data.message || 'Error obteniendo auditoría');
+      }
+    } catch (error) {
+      console.error('Error obteniendo auditoría:', error);
+      toast.error(error.message || 'Error obteniendo auditoría');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generarQR = async () => {
     try {
       const response = await fetch('/api/admin/generar-qr', {
@@ -398,6 +462,12 @@ function Admin() {
             onClick={() => setActiveTab('contactos')}
           >
             Contactos
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'audit' ? 'active' : ''}`}
+            onClick={() => setActiveTab('audit')}
+          >
+            Logs
           </button>
         </div>
 
@@ -793,6 +863,143 @@ function Admin() {
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Logs / Auditoría */}
+        {activeTab === 'audit' && (
+          <div className="tab-content active">
+            <div className="card">
+              <h2>Logs / Auditoría</h2>
+              <p className="subtitle">Eventos de login, contacto y acciones admin</p>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                  alignItems: 'center'
+                }}
+              >
+                <input
+                  type="text"
+                  placeholder="Buscar (tipo, usuario, ip, ruta...)"
+                  value={auditQuery}
+                  onChange={(e) => {
+                    setAuditQuery(e.target.value);
+                    setAuditPage(1);
+                  }}
+                  style={{ flex: '1 1 280px' }}
+                />
+
+                <select
+                  value={auditEventType}
+                  onChange={(e) => {
+                    setAuditEventType(e.target.value);
+                    setAuditPage(1);
+                  }}
+                >
+                  <option value="">Todos los tipos</option>
+                  <option value="login_attempt">login_attempt</option>
+                  <option value="login_success">login_success</option>
+                  <option value="login_failure">login_failure</option>
+                  <option value="logout">logout</option>
+                  <option value="contact_submit">contact_submit</option>
+                  <option value="admin_modelo_create">admin_modelo_create</option>
+                  <option value="admin_modelo_update">admin_modelo_update</option>
+                  <option value="admin_modelo_delete">admin_modelo_delete</option>
+                  <option value="admin_modelos_bulk">admin_modelos_bulk</option>
+                  <option value="admin_storage_signed_urls">admin_storage_signed_urls</option>
+                  <option value="admin_qr_generate">admin_qr_generate</option>
+                </select>
+
+                <select
+                  value={auditSeverity}
+                  onChange={(e) => {
+                    setAuditSeverity(e.target.value);
+                    setAuditPage(1);
+                  }}
+                >
+                  <option value="">Todas las severidades</option>
+                  <option value="info">info</option>
+                  <option value="warn">warn</option>
+                  <option value="error">error</option>
+                </select>
+
+                <select
+                  value={auditPageSize}
+                  onChange={(e) => {
+                    setAuditPageSize(parseInt(e.target.value, 10));
+                    setAuditPage(1);
+                  }}
+                >
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              {loading ? (
+                <p>Cargando...</p>
+              ) : (
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Severidad</th>
+                          <th>Evento</th>
+                          <th>Usuario</th>
+                          <th>IP</th>
+                          <th>Ruta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(auditLogs || []).map((log) => (
+                          <tr key={log.id || `${log.event_type}-${log.creado_en || log.created_at}`}>
+                            <td>{new Date(log.created_at || log.creado_en || Date.now()).toLocaleString()}</td>
+                            <td>{log.severity || ''}</td>
+                            <td>{log.event_type || ''}</td>
+                            <td>{log.actor_username || (log.actor_user_id ? `ID ${log.actor_user_id}` : '')}</td>
+                            <td>{log.ip || ''}</td>
+                            <td>{log.path || ''}</td>
+                          </tr>
+                        ))}
+                        {(!auditLogs || auditLogs.length === 0) && (
+                          <tr>
+                            <td colSpan={6} style={{ textAlign: 'center', opacity: 0.8 }}>
+                              No hay logs para mostrar
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="pagination-controls" style={{ marginTop: '1rem' }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                      disabled={auditPage <= 1}
+                    >
+                      ← Anterior
+                    </button>
+                    <span>
+                      Página {auditPage} de {auditPagination.totalPages || 1} (Total: {auditPagination.total || 0})
+                    </span>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => setAuditPage((p) => Math.min(auditPagination.totalPages || p + 1, p + 1))}
+                      disabled={auditPage >= (auditPagination.totalPages || 1)}
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>

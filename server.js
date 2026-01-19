@@ -25,7 +25,7 @@ if (wantsSupabase && !hasSupabaseConfig) {
   console.warn('⚠️  Supabase solicitado pero faltan variables de entorno.');
   console.warn('   Requiere SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY. Usando SQLite como fallback.');
 }
-let modelosDB, contactosDB, usuariosDB, modeloFotosDB, initDatabase;
+let modelosDB, contactosDB, usuariosDB, modeloFotosDB, auditLogsDB, initDatabase;
 
 if (useSupabase) {
   console.log('📦 Usando Supabase como base de datos');
@@ -34,6 +34,7 @@ if (useSupabase) {
   contactosDB = db.contactosDB;
   usuariosDB = db.usuariosDB;
   modeloFotosDB = db.modeloFotosDB;
+  auditLogsDB = db.auditLogsDB;
   initDatabase = db.initDatabase;
 } else {
   console.log('📦 Usando SQLite como base de datos');
@@ -42,6 +43,7 @@ if (useSupabase) {
   contactosDB = db.contactosDB;
   usuariosDB = db.usuariosDB;
   modeloFotosDB = db.modeloFotosDB;
+  auditLogsDB = db.auditLogsDB;
   initDatabase = db.initDatabase;
 }
 
@@ -164,6 +166,43 @@ function getUserFromAuthCookie(req) {
   }
 }
 
+function getClientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  const raw = Array.isArray(xff) ? xff[0] : xff;
+  if (raw && typeof raw === 'string') {
+    return raw.split(',')[0].trim();
+  }
+  return req.ip || null;
+}
+
+function auditLogSafe(req, entry) {
+  try {
+    if (!auditLogsDB || typeof auditLogsDB.create !== 'function') return;
+
+    const actor =
+      req?.authUser ||
+      (req.session && req.session.userId
+        ? { id: req.session.userId, username: req.session.username, nombre: req.session.nombre }
+        : null);
+
+    const payload = {
+      event_type: entry?.event_type || 'unknown',
+      severity: entry?.severity || 'info',
+      actor_user_id: actor?.id ?? null,
+      actor_username: actor?.username ?? null,
+      ip: getClientIp(req),
+      user_agent: req.get('user-agent') || null,
+      path: req.path || null,
+      method: req.method || null,
+      meta: entry?.meta || null
+    };
+
+    Promise.resolve(auditLogsDB.create(payload)).catch(() => {});
+  } catch (_) {
+    // nunca romper el flujo principal por auditoría
+  }
+}
+
 // Middleware para verificar autenticación
 function requireAuth(req, res, next) {
   const cookieUser = getUserFromAuthCookie(req);
@@ -215,10 +254,13 @@ if (require('fs').existsSync(distPath)) {
 app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    auditLogSafe(req, { event_type: 'login_attempt', severity: 'info', meta: { username } });
     
     const user = await usuariosDB.getByUsername(username);
     
     if (!user) {
+      auditLogSafe(req, { event_type: 'login_failure', severity: 'warn', meta: { username } });
       return res.status(401).json({ 
         success: false, 
         message: 'Usuario o contraseña incorrectos' 
@@ -235,6 +277,7 @@ app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
     const isValidPassword = await usuariosDB.verifyPassword(password, user.password);
     
     if (!isValidPassword) {
+      auditLogSafe(req, { event_type: 'login_failure', severity: 'warn', meta: { username } });
       return res.status(401).json({ 
         success: false, 
         message: 'Usuario o contraseña incorrectos' 
@@ -263,6 +306,7 @@ app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
 
     // Asegurar que la sesión quede persistida antes de responder (evita race conditions)
     req.session.save(() => {
+      auditLogSafe(req, { event_type: 'login_success', severity: 'info', meta: { userId: user.id, username: user.username } });
       res.json({
         success: true,
         message: 'Login exitoso',
@@ -304,6 +348,7 @@ app.get('/api/session', (req, res) => {
 
 // API - Logout
 app.get('/api/logout', (req, res) => {
+  auditLogSafe(req, { event_type: 'logout', severity: 'info' });
   res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
   if (req.session) {
     req.session.destroy(() => {
@@ -487,6 +532,7 @@ app.post('/api/admin/storage/modelo-fotos/signed-urls', requireAuth, async (req,
       });
     }
 
+    auditLogSafe(req, { event_type: 'admin_storage_signed_urls', severity: 'info', meta: { bucket: STORAGE_BUCKET, count: items.length } });
     res.json({ success: true, bucket: STORAGE_BUCKET, items });
   } catch (error) {
     console.error('Error creando signed upload URLs:', error);
@@ -523,6 +569,7 @@ app.post('/api/admin/modelos/bulk', requireAuth, async (req, res) => {
     const activa = normalizedAction === 'activate';
     const result = await modelosDB.setActivaMany(cleanIds, activa);
 
+    auditLogSafe(req, { event_type: 'admin_modelos_bulk', severity: 'info', meta: { action: normalizedAction, count: cleanIds.length } });
     res.json({
       success: true,
       changes: result?.changes || 0,
@@ -606,6 +653,7 @@ app.post('/api/admin/modelos', requireAuth, validateModelo, async (req, res) => 
       });
     }
     
+    auditLogSafe(req, { event_type: 'admin_modelo_create', severity: 'info', meta: { modeloId, nombre: modelo?.nombre } });
     res.json({ success: true, modelo, message: 'Modelo creado exitosamente' });
   } catch (error) {
     console.error('Error creando modelo:', error);
@@ -660,6 +708,7 @@ app.put('/api/admin/modelos/:id', requireAuth, validateModelo, async (req, res) 
       });
     }
     
+    auditLogSafe(req, { event_type: 'admin_modelo_update', severity: 'info', meta: { modeloId } });
     res.json({ success: true, modelo, message: 'Modelo actualizado exitosamente' });
   } catch (error) {
     res.status(500).json({ 
@@ -683,6 +732,7 @@ app.delete('/api/admin/modelos/:id', requireAuth, async (req, res) => {
     }
     
     await modelosDB.delete(modeloId);
+    auditLogSafe(req, { event_type: 'admin_modelo_delete', severity: 'warn', meta: { modeloId } });
     res.json({ success: true, message: 'Modelo eliminado exitosamente' });
   } catch (error) {
     res.status(500).json({ 
@@ -713,6 +763,9 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
         message: '¡Gracias! Tu información ha sido recibida.',
         contacto
       });
+
+      const emailDomain = typeof email === 'string' && email.includes('@') ? email.split('@').pop() : null;
+      auditLogSafe(req, { event_type: 'contact_submit', severity: 'info', meta: { contactoId: contacto?.id, emailDomain } });
     } catch (dbError) {
       console.error('Error en base de datos:', dbError);
       res.status(500).json({ 
@@ -726,6 +779,60 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
       success: false, 
       message: 'Error procesando la solicitud. Por favor, intenta más tarde.' 
     });
+  }
+});
+
+// API - Auditoría (admin)
+app.get('/api/admin/audit', requireAuth, async (req, res) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    const eventType = typeof req.query.eventType === 'string' ? req.query.eventType : '';
+    const severity = typeof req.query.severity === 'string' ? req.query.severity : '';
+    const from = typeof req.query.from === 'string' ? req.query.from : '';
+    const to = typeof req.query.to === 'string' ? req.query.to : '';
+
+    const page = Number.isFinite(Number(req.query.page)) ? parseInt(req.query.page, 10) : 1;
+    const pageSize = Number.isFinite(Number(req.query.pageSize)) ? parseInt(req.query.pageSize, 10) : 50;
+
+    if (!auditLogsDB || typeof auditLogsDB.getAllAdmin !== 'function') {
+      return res.json({
+        success: true,
+        logs: [],
+        pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 }
+      });
+    }
+
+    let result;
+    try {
+      result = await auditLogsDB.getAllAdmin({ q, eventType, severity, from, to, page, pageSize });
+    } catch (e) {
+      console.error('Auditoría no disponible (posible falta tabla audit_logs):', e);
+      return res.json({
+        success: true,
+        logs: [],
+        warning: 'Auditoría no disponible. Si usás Supabase, ejecutá la migración para crear la tabla audit_logs.',
+        pagination: { page: 1, pageSize: 50, total: 0, totalPages: 1 }
+      });
+    }
+    const rows = Array.isArray(result) ? result : (result?.rows || []);
+    const total = Array.isArray(result) ? rows.length : (result?.total ?? rows.length);
+
+    const safePage = Math.max(1, page || 1);
+    const safePageSize = Math.min(200, Math.max(1, pageSize || 50));
+
+    res.json({
+      success: true,
+      logs: rows,
+      pagination: {
+        page: safePage,
+        pageSize: safePageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / safePageSize))
+      }
+    });
+  } catch (error) {
+    console.error('Error obteniendo auditoría:', error);
+    res.status(500).json({ success: false, message: 'Error obteniendo auditoría' });
   }
 });
 
@@ -787,6 +894,7 @@ app.post('/api/admin/generar-qr', requireAuth, async (req, res) => {
       qr: qrCodeDataURL,
       url: contactUrl
     });
+    auditLogSafe(req, { event_type: 'admin_qr_generate', severity: 'info', meta: { url: contactUrl } });
   } catch (error) {
     res.status(500).json({ 
       success: false, 

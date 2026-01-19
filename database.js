@@ -67,32 +67,57 @@ function initDatabase() {
           reject(err);
           return;
         }
-        
-        // Crear usuario admin por defecto si no existe
-        db.get('SELECT COUNT(*) as count FROM usuarios', (err, row) => {
-          if (err) {
-            reject(err);
+
+        // Tabla de auditoría (eventos de seguridad/operación)
+        db.run(`
+          CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type TEXT NOT NULL,
+            severity TEXT DEFAULT 'info',
+            actor_user_id INTEGER,
+            actor_username TEXT,
+            ip TEXT,
+            user_agent TEXT,
+            path TEXT,
+            method TEXT,
+            meta TEXT,
+            creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `, (auditErr) => {
+          if (auditErr) {
+            reject(auditErr);
             return;
           }
-          
-          if (row.count === 0) {
-            bcrypt.hash('admin123', 10).then(hashedPassword => {
-              db.run(
-                `INSERT INTO usuarios (username, password, nombre) VALUES (?, ?, ?)`,
-                ['admin', hashedPassword, 'Administrador'],
-                (err) => {
-                  if (err) {
-                    reject(err);
-                  } else {
-                    console.log('✅ Usuario admin creado (username: admin, password: admin123)');
-                    resolve();
+
+          // Índice para consultas por fecha
+          db.run(`CREATE INDEX IF NOT EXISTS idx_audit_logs_creado_en ON audit_logs(creado_en)`);
+        
+          // Crear usuario admin por defecto si no existe
+          db.get('SELECT COUNT(*) as count FROM usuarios', (err, row) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+            
+            if (row.count === 0) {
+              bcrypt.hash('admin123', 10).then(hashedPassword => {
+                db.run(
+                  `INSERT INTO usuarios (username, password, nombre) VALUES (?, ?, ?)`,
+                  ['admin', hashedPassword, 'Administrador'],
+                  (err) => {
+                    if (err) {
+                      reject(err);
+                    } else {
+                      console.log('✅ Usuario admin creado (username: admin, password: admin123)');
+                      resolve();
+                    }
                   }
-                }
-              );
-            }).catch(reject);
-          } else {
-            resolve();
-          }
+                );
+              }).catch(reject);
+            } else {
+              resolve();
+            }
+          });
         });
       });
     });
@@ -521,9 +546,109 @@ const usuariosDB = {
   }
 };
 
+// Funciones para auditoría
+const auditLogsDB = {
+  create: (entry) => {
+    return new Promise((resolve, reject) => {
+      const metaJson = entry?.meta ? JSON.stringify(entry.meta).substring(0, 4000) : null;
+      db.run(
+        `INSERT INTO audit_logs (event_type, severity, actor_user_id, actor_username, ip, user_agent, path, method, meta)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          entry?.event_type || 'unknown',
+          entry?.severity || 'info',
+          entry?.actor_user_id ?? null,
+          entry?.actor_username ?? null,
+          entry?.ip ?? null,
+          entry?.user_agent ?? null,
+          entry?.path ?? null,
+          entry?.method ?? null,
+          metaJson
+        ],
+        function (err) {
+          if (err) reject(err);
+          else resolve({ lastID: this.lastID, changes: this.changes });
+        }
+      );
+    });
+  },
+  getAllAdmin: (options = {}) => {
+    return new Promise((resolve, reject) => {
+      const q = typeof options.q === 'string' ? options.q.trim().toLowerCase() : '';
+      const eventType = typeof options.eventType === 'string' ? options.eventType.trim().toLowerCase() : '';
+      const severity = typeof options.severity === 'string' ? options.severity.trim().toLowerCase() : '';
+      const from = typeof options.from === 'string' ? options.from.trim() : '';
+      const to = typeof options.to === 'string' ? options.to.trim() : '';
+
+      const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
+      const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(200, Math.max(1, parseInt(options.pageSize, 10))) : 50;
+      const offset = (page - 1) * pageSize;
+
+      const where = [];
+      const params = [];
+
+      if (eventType) {
+        where.push('LOWER(event_type) = ?');
+        params.push(eventType);
+      }
+
+      if (severity) {
+        where.push('LOWER(severity) = ?');
+        params.push(severity);
+      }
+
+      if (from) {
+        where.push(`DATE(creado_en) >= DATE(?)`);
+        params.push(from);
+      }
+
+      if (to) {
+        where.push(`DATE(creado_en) <= DATE(?)`);
+        params.push(to);
+      }
+
+      if (q) {
+        where.push(
+          '(' +
+            [
+              'LOWER(event_type) LIKE ?',
+              'LOWER(actor_username) LIKE ?',
+              'LOWER(ip) LIKE ?',
+              'LOWER(path) LIKE ?',
+              'LOWER(method) LIKE ?'
+            ].join(' OR ') +
+          ')'
+        );
+        const like = `%${q}%`;
+        params.push(like, like, like, like, like);
+      }
+
+      const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+      db.get(`SELECT COUNT(*) as count FROM audit_logs ${whereSql}`, params, (countErr, row) => {
+        if (countErr) {
+          reject(countErr);
+          return;
+        }
+
+        const total = row?.count || 0;
+
+        db.all(
+          `SELECT * FROM audit_logs ${whereSql} ORDER BY creado_en DESC LIMIT ? OFFSET ?`,
+          [...params, pageSize, offset],
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve({ rows: rows || [], total });
+          }
+        );
+      });
+    });
+  }
+};
+
 // Inicializar (llamar una vez al inicio)
 initDatabase().catch(err => {
   console.error('Error inicializando base de datos:', err);
 });
 
-module.exports = { db, modelosDB, contactosDB, usuariosDB, modeloFotosDB, initDatabase };
+module.exports = { db, modelosDB, contactosDB, usuariosDB, modeloFotosDB, auditLogsDB, initDatabase };
