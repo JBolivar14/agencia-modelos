@@ -10,6 +10,13 @@ function Admin() {
   const [modelos, setModelos] = useState([]);
   const [contactos, setContactos] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [nuevoUsuario, setNuevoUsuario] = useState({
+    username: '',
+    email: '',
+    nombre: '',
+    password: ''
+  });
   const [expandedAuditKey, setExpandedAuditKey] = useState(null);
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -116,6 +123,8 @@ function Admin() {
       setContactoPage(1);
     } else if (activeTab === 'audit') {
       setAuditPage(1);
+    } else if (activeTab === 'usuarios') {
+      setNuevoUsuario({ username: '', email: '', nombre: '', password: '' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
@@ -156,6 +165,15 @@ function Admin() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, auditQuery, auditEventType, auditSeverity, auditPage, auditPageSize]);
+
+  useEffect(() => {
+    if (activeTab !== 'usuarios') return;
+    const t = setTimeout(() => {
+      cargarUsuarios();
+    }, 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const checkAuth = async () => {
     try {
@@ -376,6 +394,68 @@ function Admin() {
     }
   };
 
+  const cargarUsuarios = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/usuarios', { credentials: 'include' });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setUsuarios(data.usuarios || []);
+      } else {
+        toast.error(data.message || 'Error cargando usuarios');
+      }
+    } catch (error) {
+      console.error('Error cargando usuarios:', error);
+      toast.error(error.message || 'Error cargando usuarios');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const crearUsuarioAdmin = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const payload = {
+        username: nuevoUsuario.username,
+        email: nuevoUsuario.email,
+        nombre: nuevoUsuario.nombre,
+        password: nuevoUsuario.password
+      };
+
+      const response = await csrfFetch('/api/admin/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Usuario admin creado');
+        setNuevoUsuario({ username: '', email: '', nombre: '', password: '' });
+        await cargarUsuarios();
+      } else {
+        toast.error(data.message || 'Error creando usuario admin');
+      }
+    } catch (error) {
+      console.error('Error creando usuario admin:', error);
+      toast.error(error.message || 'Error creando usuario admin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const generarQR = async () => {
     try {
       const response = await csrfFetch('/api/admin/generar-qr', {
@@ -553,6 +633,12 @@ function Admin() {
             onClick={() => setActiveTab('audit')}
           >
             Logs
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'usuarios' ? 'active' : ''}`}
+            onClick={() => setActiveTab('usuarios')}
+          >
+            Usuarios
           </button>
         </div>
 
@@ -1003,6 +1089,7 @@ function Admin() {
                   <option value="admin_modelo_update">admin_modelo_update</option>
                   <option value="admin_modelo_delete">admin_modelo_delete</option>
                   <option value="admin_modelos_bulk">admin_modelos_bulk</option>
+                  <option value="admin_user_create">admin_user_create</option>
                   <option value="admin_storage_signed_urls">admin_storage_signed_urls</option>
                   <option value="admin_qr_generate">admin_qr_generate</option>
                 </select>
@@ -1172,6 +1259,106 @@ function Admin() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Usuarios (Admins) */}
+        {activeTab === 'usuarios' && (
+          <div className="tab-content active">
+            <div className="card">
+              <h2>Usuarios Admin</h2>
+              <p className="subtitle">Crear y listar usuarios con acceso al panel</p>
+
+              <form onSubmit={crearUsuarioAdmin} className="admin-user-form">
+                <div className="admin-user-form-grid">
+                  <div className="form-group">
+                    <label>Username *</label>
+                    <input
+                      type="text"
+                      required
+                      value={nuevoUsuario.username}
+                      onChange={(e) => setNuevoUsuario((p) => ({ ...p, username: e.target.value }))}
+                      placeholder="admin1"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Email *</label>
+                    <input
+                      type="email"
+                      required
+                      value={nuevoUsuario.email}
+                      onChange={(e) => setNuevoUsuario((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="admin1@correo.com"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Nombre *</label>
+                    <input
+                      type="text"
+                      required
+                      value={nuevoUsuario.nombre}
+                      onChange={(e) => setNuevoUsuario((p) => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Admin 1"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Contraseña *</label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={nuevoUsuario.password}
+                      onChange={(e) => setNuevoUsuario((p) => ({ ...p, password: e.target.value }))}
+                      placeholder="mínimo 8 caracteres"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button type="submit" className="btn-primary" disabled={loading}>
+                    Crear usuario
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={cargarUsuarios} disabled={loading}>
+                    Recargar
+                  </button>
+                </div>
+              </form>
+
+              <div style={{ marginTop: '1rem' }}>
+                {loading ? (
+                  <p>Cargando...</p>
+                ) : usuarios.length === 0 ? (
+                  <p>No hay usuarios para mostrar</p>
+                ) : (
+                  <div className="admin-users-table-container">
+                    <table className="admin-users-table">
+                      <thead>
+                        <tr>
+                          <th>Creado</th>
+                          <th>Username</th>
+                          <th>Email</th>
+                          <th>Nombre</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usuarios.map((u) => (
+                          <tr key={u.id || `${u.username}-${u.email}`}>
+                            <td>{u.creado_en ? new Date(u.creado_en).toLocaleDateString('es-ES') : '-'}</td>
+                            <td>{u.username}</td>
+                            <td>{u.email || '-'}</td>
+                            <td>{u.nombre}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

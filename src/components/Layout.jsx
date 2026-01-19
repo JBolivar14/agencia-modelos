@@ -30,7 +30,7 @@ function Layout() {
               to="/login"
               className={`nav-link ${location.pathname === '/login' ? 'active' : ''}`}
             >
-              Admin
+              Login
             </Link>
           </nav>
         </div>

@@ -14,6 +14,7 @@ function initDatabase() {
         CREATE TABLE IF NOT EXISTS usuarios (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT UNIQUE NOT NULL,
+          email TEXT,
           password TEXT NOT NULL,
           nombre TEXT NOT NULL,
           creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -91,33 +92,61 @@ function initDatabase() {
 
           // Índice para consultas por fecha
           db.run(`CREATE INDEX IF NOT EXISTS idx_audit_logs_creado_en ON audit_logs(creado_en)`);
-        
-          // Crear usuario admin por defecto si no existe
-          db.get('SELECT COUNT(*) as count FROM usuarios', (err, row) => {
-            if (err) {
-              reject(err);
+
+          // Migración ligera: agregar email a usuarios si falta (instalaciones viejas)
+          db.all(`PRAGMA table_info(usuarios)`, (schemaErr, cols) => {
+            if (schemaErr) {
+              reject(schemaErr);
               return;
             }
-            
-            if (row.count === 0) {
-              bcrypt.hash('admin123', 10).then(hashedPassword => {
-                db.run(
-                  `INSERT INTO usuarios (username, password, nombre) VALUES (?, ?, ?)`,
-                  ['admin', hashedPassword, 'Administrador'],
-                  (err) => {
-                    if (err) {
-                      reject(err);
-                    } else {
-                      console.log('✅ Usuario admin creado (username: admin, password: admin123)');
-                      resolve();
-                    }
-                  }
-                );
-              }).catch(reject);
-            } else {
-              resolve();
+
+            const hasEmail = Array.isArray(cols) && cols.some((c) => c && c.name === 'email');
+            const ensureEmailIndex = (cb) => db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)`, cb);
+
+            if (hasEmail) {
+              ensureEmailIndex(() => {});
+              // Continuar con creación de admin
+              return createDefaultAdmin();
             }
+
+            db.run(`ALTER TABLE usuarios ADD COLUMN email TEXT`, (alterErr) => {
+              if (alterErr) {
+                reject(alterErr);
+                return;
+              }
+              ensureEmailIndex(() => {});
+              return createDefaultAdmin();
+            });
           });
+        
+          function createDefaultAdmin() {
+            // Crear usuario admin por defecto si no existe
+            db.get('SELECT COUNT(*) as count FROM usuarios', (err, row) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+              
+              if (row.count === 0) {
+                bcrypt.hash('admin123', 10).then(hashedPassword => {
+                  db.run(
+                    `INSERT INTO usuarios (username, email, password, nombre) VALUES (?, ?, ?, ?)`,
+                    ['admin', null, hashedPassword, 'Administrador'],
+                    (err) => {
+                      if (err) {
+                        reject(err);
+                      } else {
+                        console.log('✅ Usuario admin creado (username: admin, password: admin123)');
+                        resolve();
+                      }
+                    }
+                  );
+                }).catch(reject);
+              } else {
+                resolve();
+              }
+            });
+          }
         });
       });
     });
@@ -594,6 +623,50 @@ const usuariosDB = {
         if (err) reject(err);
         else resolve(row);
       });
+    });
+  },
+  getByEmail: (email) => {
+    return new Promise((resolve, reject) => {
+      const norm = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      if (!norm) {
+        resolve(null);
+        return;
+      }
+      db.get('SELECT * FROM usuarios WHERE LOWER(email) = ?', [norm], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  },
+  create: ({ username, email, passwordHash, nombre }) => {
+    return new Promise((resolve, reject) => {
+      const u = typeof username === 'string' ? username.trim() : '';
+      const e = typeof email === 'string' ? email.trim().toLowerCase() : null;
+      const n = typeof nombre === 'string' ? nombre.trim() : '';
+      if (!u || !passwordHash || !n) {
+        reject(new Error('Datos inválidos para crear usuario'));
+        return;
+      }
+
+      db.run(
+        `INSERT INTO usuarios (username, email, password, nombre) VALUES (?, ?, ?, ?)`,
+        [u, e || null, passwordHash, n],
+        function (err) {
+          if (err) reject(err);
+          else resolve({ lastID: this.lastID, changes: this.changes });
+        }
+      );
+    });
+  },
+  getAllAdmin: () => {
+    return new Promise((resolve, reject) => {
+      db.all(
+        'SELECT id, username, email, nombre, creado_en FROM usuarios ORDER BY creado_en DESC',
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
     });
   },
   verifyPassword: async (plainPassword, hashedPassword) => {

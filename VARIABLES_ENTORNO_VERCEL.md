@@ -66,6 +66,7 @@ Para cada variable:
 | `SESSION_SECRET` | `tu-secret-aleatorio` | 🟡 Recomendada | Secret para sesiones |
 | `NODE_ENV` | `production` | 🟡 Recomendada | Entorno de producción |
 | `PORT` | `3000` | 🟢 Opcional | Puerto (Vercel lo asigna automáticamente) |
+| `ADMIN_REGISTRATION_CODE` | `un-codigo-largo` | 🟢 Opcional | Habilita registro de admins desde `/login` (modo “Registrarse”) |
 
 ---
 

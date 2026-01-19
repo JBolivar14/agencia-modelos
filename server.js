@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const { createClient } = require('@supabase/supabase-js');
 
 // Cargar variables de entorno desde .env en desarrollo/local
@@ -124,6 +125,15 @@ app.use(session({
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta más tarde.' })
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
@@ -268,6 +278,77 @@ app.get('/api/admin/csrf', requireAuth, (req, res) => {
   res.json({ success: true, token });
 });
 
+// Admin users (usuarios)
+app.get('/api/admin/usuarios', requireAuth, async (req, res) => {
+  try {
+    if (!usuariosDB || typeof usuariosDB.getAllAdmin !== 'function') {
+      return res.json({ success: true, usuarios: [] });
+    }
+    const usuarios = await usuariosDB.getAllAdmin();
+    res.json({ success: true, usuarios: usuarios || [] });
+  } catch (error) {
+    console.error('Error obteniendo usuarios:', error);
+    res.status(500).json({ success: false, message: 'Error obteniendo usuarios' });
+  }
+});
+
+app.post('/api/admin/usuarios', requireAuth, requireCsrf, async (req, res) => {
+  try {
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!username) return res.status(400).json({ success: false, message: 'El username es requerido' });
+    if (!email) return res.status(400).json({ success: false, message: 'El email es requerido' });
+    if (!nombre) return res.status(400).json({ success: false, message: 'El nombre es requerido' });
+    if (!password || password.trim().length < 8) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailOk) return res.status(400).json({ success: false, message: 'El formato del email no es válido' });
+
+    if (!usuariosDB || typeof usuariosDB.create !== 'function') {
+      return res.status(500).json({ success: false, message: 'DB usuarios no soporta creación' });
+    }
+
+    // Evitar duplicados
+    const existingByUsername = await usuariosDB.getByUsername(username);
+    if (existingByUsername) {
+      return res.status(409).json({ success: false, message: 'Ya existe un usuario con ese username' });
+    }
+    if (typeof usuariosDB.getByEmail === 'function') {
+      const existingByEmail = await usuariosDB.getByEmail(email);
+      if (existingByEmail) {
+        return res.status(409).json({ success: false, message: 'Ya existe un usuario con ese email' });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
+    const result = await usuariosDB.create({ username, email, nombre, passwordHash });
+
+    auditLogSafe(req, {
+      event_type: 'admin_user_create',
+      severity: 'warn',
+      meta: { createdUserId: result?.lastID, username, email }
+    });
+
+    res.json({ success: true, message: 'Usuario admin creado', id: result?.lastID || null });
+  } catch (error) {
+    console.error('Error creando usuario admin:', error);
+    const msg = String(error?.message || '');
+    // Si en Supabase falta columna email, ayudar con mensaje
+    if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('email')) {
+      return res.status(500).json({
+        success: false,
+        message: 'Falta la columna email en usuarios. Ejecutá la migración de usuarios/email en Supabase.'
+      });
+    }
+    res.status(500).json({ success: false, message: 'Error creando usuario admin' });
+  }
+});
+
 // Ruta para favicon (evitar error 404)
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end(); // No Content - el navegador no mostrará error
@@ -293,14 +374,85 @@ if (require('fs').existsSync(distPath)) {
 
 // Rutas de API (deben estar antes de las rutas de React)
 
+// API - Registro (admin) desde login (protegido por código)
+app.post('/api/register', registerLimiter, async (req, res) => {
+  try {
+    const registrationCode = process.env.ADMIN_REGISTRATION_CODE;
+    if (!registrationCode || !String(registrationCode).trim()) {
+      return res.status(403).json({ success: false, message: 'Registro deshabilitado' });
+    }
+
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
+
+    auditLogSafe(req, { event_type: 'admin_register_attempt', severity: 'info', meta: { username, email } });
+
+    if (!code || code !== String(registrationCode)) {
+      auditLogSafe(req, { event_type: 'admin_register_failure', severity: 'warn', meta: { username, email, reason: 'bad_code' } });
+      return res.status(403).json({ success: false, message: 'Código de registro inválido' });
+    }
+
+    if (!username || username.length < 3 || username.length > 32 || !/^[a-zA-Z0-9_.-]+$/.test(username)) {
+      return res.status(400).json({ success: false, message: 'Username inválido (3-32, letras/números/._-)' });
+    }
+
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailOk) return res.status(400).json({ success: false, message: 'El formato del email no es válido' });
+
+    if (!nombre) return res.status(400).json({ success: false, message: 'El nombre es requerido' });
+    if (!password || password.trim().length < 8) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    if (!usuariosDB || typeof usuariosDB.create !== 'function') {
+      return res.status(500).json({ success: false, message: 'DB usuarios no soporta registro' });
+    }
+
+    const existingByUsername = await usuariosDB.getByUsername(username);
+    if (existingByUsername) {
+      return res.status(409).json({ success: false, message: 'Ya existe un usuario con ese username' });
+    }
+    if (typeof usuariosDB.getByEmail === 'function') {
+      const existingByEmail = await usuariosDB.getByEmail(email);
+      if (existingByEmail) {
+        return res.status(409).json({ success: false, message: 'Ya existe un usuario con ese email' });
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
+    const result = await usuariosDB.create({ username, email, nombre, passwordHash });
+
+    auditLogSafe(req, { event_type: 'admin_register_success', severity: 'warn', meta: { createdUserId: result?.lastID, username, email } });
+
+    return res.json({ success: true, message: 'Registro exitoso' });
+  } catch (error) {
+    console.error('Error en registro:', error);
+    const msg = String(error?.message || '');
+    if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('email')) {
+      return res.status(500).json({
+        success: false,
+        message: 'Falta la columna email en usuarios. Ejecutá la migración de usuarios/email en Supabase.'
+      });
+    }
+    return res.status(500).json({ success: false, message: 'Error en el registro' });
+  }
+});
+
 // API - Login
 app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
 
     auditLogSafe(req, { event_type: 'login_attempt', severity: 'info', meta: { username } });
-    
-    const user = await usuariosDB.getByUsername(username);
+
+    // Permitir login por username o email (si el usuario escribe un email)
+    let user = await usuariosDB.getByUsername(username);
+    if (!user && typeof username === 'string' && username.includes('@') && typeof usuariosDB.getByEmail === 'function') {
+      user = await usuariosDB.getByEmail(username);
+    }
     
     if (!user) {
       auditLogSafe(req, { event_type: 'login_failure', severity: 'warn', meta: { username } });
@@ -353,7 +505,7 @@ app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
       res.json({
         success: true,
         message: 'Login exitoso',
-        user: { id: user.id, username: user.username, nombre: user.nombre }
+        user: { id: user.id, username: user.username, nombre: user.nombre, email: user.email || null }
       });
     });
   } catch (error) {

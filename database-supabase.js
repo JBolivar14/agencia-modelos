@@ -74,6 +74,51 @@ const usuariosDB = {
     }
     return data;
   },
+  getByEmail: async (email) => {
+    const norm = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!norm) return null;
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('email', norm)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // No encontrado
+      throw error;
+    }
+    return data;
+  },
+  create: async ({ username, email, passwordHash, nombre }) => {
+    const payload = {
+      username: typeof username === 'string' ? username.trim() : null,
+      password: passwordHash,
+      nombre: typeof nombre === 'string' ? nombre.trim() : null
+    };
+
+    if (email !== undefined) {
+      payload.email = typeof email === 'string' ? email.trim().toLowerCase() : null;
+    }
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .insert(payload)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return { lastID: data?.id, changes: 1 };
+  },
+  getAllAdmin: async () => {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, username, email, nombre, creado_en')
+      .order('creado_en', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
   getById: async (id) => {
     const { data, error } = await supabase
       .from('usuarios')

@@ -24,6 +24,40 @@
   margin-bottom: 2rem;
 }
 
+.login-switch {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+}
+
+.login-switch-btn {
+  flex: 1 1 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 2px solid var(--border-color);
+  background: #ffffff;
+  color: var(--text-primary);
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-switch-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(4, 131, 184, 0.45);
+}
+
+.login-switch-btn.active {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+  color: white;
+}
+
+.login-switch-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .form-group {
   margin-bottom: 1.5rem;
 }
