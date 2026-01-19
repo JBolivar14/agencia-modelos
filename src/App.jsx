@@ -6,6 +6,7 @@ import Contacto from './pages/Contacto';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 import FormularioModelo from './pages/FormularioModelo';
+import ConfirmarEmail from './pages/ConfirmarEmail';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -16,6 +17,7 @@ function App() {
         <Route index element={<Home />} />
         <Route path="modelo/:id" element={<ModeloDetalle />} />
         <Route path="contacto" element={<Contacto />} />
+        <Route path="confirmar" element={<ConfirmarEmail />} />
         <Route path="login" element={<Login />} />
         <Route
           path="admin"

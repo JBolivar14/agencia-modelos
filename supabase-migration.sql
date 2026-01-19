@@ -49,6 +49,10 @@ CREATE TABLE IF NOT EXISTS contactos (
   telefono TEXT,
   empresa TEXT,
   mensaje TEXT,
+  confirmado BOOLEAN DEFAULT false,
+  confirm_token TEXT,
+  confirm_token_expira TIMESTAMP WITH TIME ZONE,
+  confirmado_en TIMESTAMP WITH TIME ZONE,
   fecha TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

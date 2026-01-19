@@ -4,12 +4,15 @@ import { toast } from '../utils/toast';
 import './Login.css';
 
 function Login() {
-  const [mode, setMode] = useState('login'); // login | register
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regNombre, setRegNombre] = useState('');
-  const [regCode, setRegCode] = useState('');
+  const [mode, setMode] = useState('admin'); // admin | modelo
+  const [username, setUsername] = useState(''); // admin: username/email
+  const [password, setPassword] = useState(''); // admin password
+
+  // Registro de modelo (público)
+  const [modeloNombre, setModeloNombre] = useState('');
+  const [modeloEmail, setModeloEmail] = useState('');
+  const [modeloTelefono, setModeloTelefono] = useState('');
+  const [modeloMensaje, setModeloMensaje] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -71,24 +74,23 @@ function Login() {
     }
   };
 
-  const handleRegister = async (e) => {
+  const handleModeloRegistro = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await fetch('/api/register', {
+      const payload = {
+        nombre: modeloNombre,
+        email: modeloEmail,
+        telefono: modeloTelefono,
+        empresa: null,
+        mensaje: modeloMensaje || 'Registro de modelo'
+      };
+
+      const response = await fetch('/api/contacto', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          username,
-          email: regEmail,
-          nombre: regNombre,
-          password,
-          code: regCode
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -97,31 +99,17 @@ function Login() {
       }
 
       const data = await response.json();
-      if (!data.success) {
-        toast.error(data.message || 'No se pudo registrar');
-        return;
-      }
-
-      // Auto-login luego del registro
-      const loginRes = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, password }),
-      });
-
-      const loginData = await loginRes.json().catch(() => ({}));
-      if (loginRes.ok && loginData?.success) {
-        toast.success('Registro exitoso. Entrando al panel...');
-        setTimeout(() => {
-          navigate('/admin', { replace: true });
-        }, 800);
+      if (data.success) {
+        toast.success(data.message || '¡Listo! Revisá tu email para confirmar.');
+        setModeloNombre('');
+        setModeloEmail('');
+        setModeloTelefono('');
+        setModeloMensaje('');
       } else {
-        toast.success('Registro exitoso. Ahora podés loguearte.');
-        setMode('login');
+        toast.error(data.message || 'No se pudo enviar tu información');
       }
     } catch (error) {
-      console.error('Error en registro:', error);
+      console.error('Error en registro de modelo:', error);
       toast.error(error.message || 'Error de conexión. Por favor, intenta nuevamente.');
     } finally {
       setLoading(false);
@@ -135,9 +123,9 @@ function Login() {
           <h1>🔐 Loguearte</h1>
           <p className="subtitle">
             Si ya estás registrado, logueate acá. Si no, creá tu cuenta.
-            {mode === 'register' && (
+            {mode === 'modelo' && (
               <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.95rem', opacity: 0.9 }}>
-                (El registro requiere un código provisto por la agencia)
+                (Te vamos a enviar un email para confirmar tu dirección)
               </span>
             )}
           </p>
@@ -145,115 +133,136 @@ function Login() {
           <div className="login-switch" role="tablist" aria-label="Login o registro">
             <button
               type="button"
-              className={`login-switch-btn ${mode === 'login' ? 'active' : ''}`}
-              onClick={() => setMode('login')}
+              className={`login-switch-btn ${mode === 'admin' ? 'active' : ''}`}
+              onClick={() => setMode('admin')}
               disabled={loading}
             >
-              Iniciar sesión
+              Admin
             </button>
             <button
               type="button"
-              className={`login-switch-btn ${mode === 'register' ? 'active' : ''}`}
-              onClick={() => setMode('register')}
+              className={`login-switch-btn ${mode === 'modelo' ? 'active' : ''}`}
+              onClick={() => setMode('modelo')}
               disabled={loading}
             >
-              Registrarse
+              Modelo
             </button>
           </div>
           
-          <form onSubmit={mode === 'login' ? handleLogin : handleRegister}>
-            <div className="form-group">
-              <label htmlFor="username">{mode === 'login' ? 'Usuario o email' : 'Username'}</label>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                required
-                placeholder={mode === 'login' ? 'Ingresa tu usuario o email' : 'Ej: admin1'}
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            {mode === 'register' && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="regEmail">Email</label>
-                  <input
-                    type="email"
-                    id="regEmail"
-                    name="regEmail"
-                    required
-                    placeholder="tuemail@ejemplo.com"
-                    autoComplete="email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="regNombre">Nombre</label>
-                  <input
-                    type="text"
-                    id="regNombre"
-                    name="regNombre"
-                    required
-                    placeholder="Tu nombre"
-                    autoComplete="name"
-                    value={regNombre}
-                    onChange={(e) => setRegNombre(e.target.value)}
-                    disabled={loading}
-                  />
-                </div>
-              </>
-            )}
-            
-            <div className="form-group">
-              <label htmlFor="password">Contraseña</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                required
-                placeholder="Ingresa tu contraseña"
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            {mode === 'register' && (
+          {mode === 'admin' ? (
+            <form onSubmit={handleLogin}>
               <div className="form-group">
-                <label htmlFor="regCode">Código de registro</label>
+                <label htmlFor="username">Usuario o email</label>
                 <input
-                  type="password"
-                  id="regCode"
-                  name="regCode"
+                  type="text"
+                  id="username"
+                  name="username"
                   required
-                  placeholder="Código provisto por la agencia"
-                  autoComplete="one-time-code"
-                  value={regCode}
-                  onChange={(e) => setRegCode(e.target.value)}
+                  placeholder="Ingresa tu usuario o email"
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   disabled={loading}
                 />
               </div>
-            )}
-            
-            <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? (
-                <>
-                  <span className="loader"></span>
-                  {mode === 'login' ? 'Iniciando sesión...' : 'Registrando...'}
-                </>
-              ) : (
-                mode === 'login' ? 'Iniciar Sesión' : 'Registrarme'
-              )}
-            </button>
-          </form>
+
+              <div className="form-group">
+                <label htmlFor="password">Contraseña</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  required
+                  placeholder="Ingresa tu contraseña"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <button type="submit" className="btn-submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="loader"></span>
+                    Iniciando sesión...
+                  </>
+                ) : (
+                  'Iniciar Sesión'
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleModeloRegistro}>
+              <div className="form-group">
+                <label htmlFor="modeloNombre">Nombre completo</label>
+                <input
+                  type="text"
+                  id="modeloNombre"
+                  name="modeloNombre"
+                  required
+                  placeholder="Tu nombre"
+                  autoComplete="name"
+                  value={modeloNombre}
+                  onChange={(e) => setModeloNombre(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="modeloEmail">Email</label>
+                <input
+                  type="email"
+                  id="modeloEmail"
+                  name="modeloEmail"
+                  required
+                  placeholder="tuemail@ejemplo.com"
+                  autoComplete="email"
+                  value={modeloEmail}
+                  onChange={(e) => setModeloEmail(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="modeloTelefono">Teléfono</label>
+                <input
+                  type="tel"
+                  id="modeloTelefono"
+                  name="modeloTelefono"
+                  placeholder="Opcional"
+                  autoComplete="tel"
+                  value={modeloTelefono}
+                  onChange={(e) => setModeloTelefono(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="modeloMensaje">Mensaje</label>
+                <input
+                  type="text"
+                  id="modeloMensaje"
+                  name="modeloMensaje"
+                  placeholder="Opcional"
+                  value={modeloMensaje}
+                  onChange={(e) => setModeloMensaje(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <button type="submit" className="btn-submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="loader"></span>
+                    Enviando...
+                  </>
+                ) : (
+                  'Crear mi cuenta'
+                )}
+              </button>
+            </form>
+          )}
           
           <div className="login-footer">
             <a href="/" className="back-link">← Volver al inicio</a>

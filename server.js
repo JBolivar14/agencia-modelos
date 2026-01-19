@@ -10,6 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { createClient } = require('@supabase/supabase-js');
+const { sendEmail, getEmailConfig } = require('./email');
 
 // Cargar variables de entorno desde .env en desarrollo/local
 if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
@@ -132,15 +133,6 @@ const loginLimiter = rateLimit({
     res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta más tarde.' })
 });
 
-const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (_req, res) =>
-    res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta más tarde.' })
-});
-
 const contactoLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
@@ -184,6 +176,16 @@ function getClientIp(req) {
     return raw.split(',')[0].trim();
   }
   return req.ip || null;
+}
+
+function getBaseUrl(req) {
+  const env = process.env.APP_BASE_URL;
+  if (env && String(env).trim()) return String(env).trim().replace(/\/+$/, '');
+
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'https').toString().split(',')[0].trim();
+  const host = (req.headers['x-forwarded-host'] || req.get('host') || '').toString().split(',')[0].trim();
+  if (!host) return '';
+  return `${proto}://${host}`;
 }
 
 function auditLogSafe(req, entry) {
@@ -374,72 +376,8 @@ if (require('fs').existsSync(distPath)) {
 
 // Rutas de API (deben estar antes de las rutas de React)
 
-// API - Registro (admin) desde login (protegido por código)
-app.post('/api/register', registerLimiter, async (req, res) => {
-  try {
-    const registrationCode = process.env.ADMIN_REGISTRATION_CODE;
-    if (!registrationCode || !String(registrationCode).trim()) {
-      return res.status(403).json({ success: false, message: 'Registro deshabilitado' });
-    }
-
-    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
-    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim() : '';
-    const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    const code = typeof req.body?.code === 'string' ? req.body.code.trim() : '';
-
-    auditLogSafe(req, { event_type: 'admin_register_attempt', severity: 'info', meta: { username, email } });
-
-    if (!code || code !== String(registrationCode)) {
-      auditLogSafe(req, { event_type: 'admin_register_failure', severity: 'warn', meta: { username, email, reason: 'bad_code' } });
-      return res.status(403).json({ success: false, message: 'Código de registro inválido' });
-    }
-
-    if (!username || username.length < 3 || username.length > 32 || !/^[a-zA-Z0-9_.-]+$/.test(username)) {
-      return res.status(400).json({ success: false, message: 'Username inválido (3-32, letras/números/._-)' });
-    }
-
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    if (!emailOk) return res.status(400).json({ success: false, message: 'El formato del email no es válido' });
-
-    if (!nombre) return res.status(400).json({ success: false, message: 'El nombre es requerido' });
-    if (!password || password.trim().length < 8) {
-      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
-    }
-
-    if (!usuariosDB || typeof usuariosDB.create !== 'function') {
-      return res.status(500).json({ success: false, message: 'DB usuarios no soporta registro' });
-    }
-
-    const existingByUsername = await usuariosDB.getByUsername(username);
-    if (existingByUsername) {
-      return res.status(409).json({ success: false, message: 'Ya existe un usuario con ese username' });
-    }
-    if (typeof usuariosDB.getByEmail === 'function') {
-      const existingByEmail = await usuariosDB.getByEmail(email);
-      if (existingByEmail) {
-        return res.status(409).json({ success: false, message: 'Ya existe un usuario con ese email' });
-      }
-    }
-
-    const passwordHash = await bcrypt.hash(password.trim(), 10);
-    const result = await usuariosDB.create({ username, email, nombre, passwordHash });
-
-    auditLogSafe(req, { event_type: 'admin_register_success', severity: 'warn', meta: { createdUserId: result?.lastID, username, email } });
-
-    return res.json({ success: true, message: 'Registro exitoso' });
-  } catch (error) {
-    console.error('Error en registro:', error);
-    const msg = String(error?.message || '');
-    if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('email')) {
-      return res.status(500).json({
-        success: false,
-        message: 'Falta la columna email en usuarios. Ejecutá la migración de usuarios/email en Supabase.'
-      });
-    }
-    return res.status(500).json({ success: false, message: 'Error en el registro' });
-  }
-});
+// Nota: el registro de usuarios admin NO es público.
+// Los admins se crean desde el panel (tab Usuarios) por un admin ya autenticado.
 
 // API - Login
 app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
@@ -968,19 +906,54 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
         email, 
         telefono, 
         empresa, 
-        mensaje 
+        mensaje,
+        confirmado: false
       });
       
       const contacto = await contactosDB.getById(result.lastID);
+
+      // Generar token de confirmación y enviarlo por email
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+      if (contactosDB && typeof contactosDB.setConfirmToken === 'function') {
+        await contactosDB.setConfirmToken({ id: contacto?.id || result.lastID, token, expiraEn: expiresAt });
+      }
+
+      const baseUrl = getBaseUrl(req);
+      const confirmPageUrl = baseUrl ? `${baseUrl}/confirmar?token=${encodeURIComponent(token)}` : '';
+      const emailCfg = getEmailConfig();
+
+      try {
+        if (confirmPageUrl) {
+          await sendEmail({
+            to: email,
+            subject: 'Confirmá tu email - Agencia Modelos Argentinas',
+            text:
+              `Hola ${nombre},\n\n` +
+              `Para confirmar tu email, ingresá acá:\n${confirmPageUrl}\n\n` +
+              `Este link vence en 24 horas.\n`,
+            html:
+              `<p>Hola <strong>${String(nombre)}</strong>,</p>` +
+              `<p>Para confirmar tu email, hacé clic acá:</p>` +
+              `<p><a href="${confirmPageUrl}">Confirmar mi email</a></p>` +
+              `<p>Este link vence en 24 horas.</p>`
+          });
+        }
+      } catch (mailErr) {
+        // No romper el flujo si falla el email; queda pendiente de confirmación
+        console.error('Error enviando email de confirmación:', mailErr);
+      }
       
       res.json({ 
         success: true, 
-        message: '¡Gracias! Tu información ha sido recibida.',
+        message: emailCfg?.ok
+          ? '¡Gracias! Te enviamos un email para confirmar tu dirección.'
+          : '¡Gracias! Tu información ha sido recibida.',
         contacto
       });
 
       const emailDomain = typeof email === 'string' && email.includes('@') ? email.split('@').pop() : null;
-      auditLogSafe(req, { event_type: 'contact_submit', severity: 'info', meta: { contactoId: contacto?.id, emailDomain } });
+      auditLogSafe(req, { event_type: 'contact_submit', severity: 'info', meta: { contactoId: contacto?.id, emailDomain, confirmado: false } });
     } catch (dbError) {
       console.error('Error en base de datos:', dbError);
       res.status(500).json({ 
@@ -994,6 +967,36 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
       success: false, 
       message: 'Error procesando la solicitud. Por favor, intenta más tarde.' 
     });
+  }
+});
+
+// API - Confirmar email de contacto (público)
+app.get('/api/contacto/confirm', async (req, res) => {
+  try {
+    const token = typeof req.query?.token === 'string' ? req.query.token : '';
+    if (!token || !token.trim()) {
+      return res.status(400).json({ success: false, message: 'Token inválido' });
+    }
+
+    if (!contactosDB || typeof contactosDB.confirmByToken !== 'function') {
+      return res.status(500).json({ success: false, message: 'Confirmación no disponible' });
+    }
+
+    const result = await contactosDB.confirmByToken({ token });
+    if (!result?.ok) {
+      const reason = result?.reason || 'invalid';
+      const msg =
+        reason === 'expired'
+          ? 'El link de confirmación expiró'
+          : 'Token inválido o ya confirmado';
+      return res.status(400).json({ success: false, message: msg, reason });
+    }
+
+    auditLogSafe(req, { event_type: 'contact_confirm_success', severity: 'info', meta: { contactoId: result.contactoId } });
+    return res.json({ success: true, message: 'Email confirmado' });
+  } catch (error) {
+    console.error('Error confirmando email:', error);
+    return res.status(500).json({ success: false, message: 'Error confirmando email' });
   }
 });
 

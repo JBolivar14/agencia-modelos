@@ -425,13 +425,65 @@ const contactosDB = {
         email: data.email,
         telefono: data.telefono || null,
         empresa: data.empresa || null,
-        mensaje: data.mensaje || null
+        mensaje: data.mensaje || null,
+        confirmado: data.confirmado === true
       })
       .select()
       .single();
 
     if (error) throw error;
     return { lastID: result.id, changes: 1 };
+  },
+  setConfirmToken: async ({ id, token, expiraEn }) => {
+    const { data, error } = await supabase
+      .from('contactos')
+      .update({
+        confirm_token: token,
+        confirm_token_expira: expiraEn || null,
+        confirmado: false,
+        confirmado_en: null
+      })
+      .eq('id', id)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    return { changes: data ? 1 : 0 };
+  },
+  confirmByToken: async ({ token }) => {
+    const t = typeof token === 'string' ? token.trim() : '';
+    if (!t) return { ok: false, reason: 'missing' };
+
+    const { data: row, error } = await supabase
+      .from('contactos')
+      .select('*')
+      .eq('confirm_token', t)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return { ok: false, reason: 'not_found' };
+      throw error;
+    }
+
+    if (row?.confirm_token_expira) {
+      const exp = new Date(row.confirm_token_expira);
+      if (!Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+        return { ok: false, reason: 'expired' };
+      }
+    }
+
+    const { error: updError } = await supabase
+      .from('contactos')
+      .update({
+        confirmado: true,
+        confirmado_en: new Date().toISOString(),
+        confirm_token: null,
+        confirm_token_expira: null
+      })
+      .eq('id', row.id);
+
+    if (updError) throw updError;
+    return { ok: true, contactoId: row.id, email: row.email };
   }
 };
 

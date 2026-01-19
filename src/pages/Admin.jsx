@@ -997,6 +997,7 @@ function Admin() {
                         <th>Fecha</th>
                         <th>Nombre</th>
                         <th>Email</th>
+                        <th>Confirmado</th>
                         <th>Teléfono</th>
                         <th>Empresa</th>
                         <th>Mensaje</th>
@@ -1008,6 +1009,7 @@ function Admin() {
                           <td>{new Date(contacto.fecha).toLocaleDateString('es-ES')}</td>
                           <td>{contacto.nombre}</td>
                           <td>{contacto.email}</td>
+                          <td>{contacto.confirmado ? '✅' : '⏳'}</td>
                           <td>{contacto.telefono || '-'}</td>
                           <td>{contacto.empresa || '-'}</td>
                           <td>{contacto.mensaje ? contacto.mensaje.substring(0, 50) + '...' : '-'}</td>

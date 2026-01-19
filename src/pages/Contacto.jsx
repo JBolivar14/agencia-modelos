@@ -64,7 +64,7 @@ function Contacto() {
       const data = await response.json();
 
       if (data.success) {
-        toast.success('¡Gracias! Tu información ha sido recibida.');
+        toast.success(data.message || '¡Gracias! Revisá tu email para confirmar.');
         // Limpiar formulario
         setFormData({
           nombre: '',

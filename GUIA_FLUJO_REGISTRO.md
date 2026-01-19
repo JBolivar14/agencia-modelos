@@ -22,7 +22,7 @@
 ### 3) Usuarios admin
 
 - **Quién lo crea**: un admin existente.
-- **Dónde**: panel Admin → tab **Usuarios**.
+- **Dónde**: panel Admin → tab **Usuarios** (no es registro público).
 - **Qué se pide**: username + **email obligatorio** + nombre + contraseña.
 - **Login**: se puede iniciar sesión con **username o email** + contraseña.
 

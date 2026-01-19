@@ -61,6 +61,10 @@ function initDatabase() {
           telefono TEXT,
           empresa TEXT,
           mensaje TEXT,
+          confirmado INTEGER DEFAULT 0,
+          confirm_token TEXT,
+          confirm_token_expira DATETIME,
+          confirmado_en DATETIME,
           fecha DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `, (err) => {
@@ -92,6 +96,38 @@ function initDatabase() {
 
           // Índice para consultas por fecha
           db.run(`CREATE INDEX IF NOT EXISTS idx_audit_logs_creado_en ON audit_logs(creado_en)`);
+
+          // Migración ligera: columnas de confirmación en contactos (instalaciones viejas)
+          db.all(`PRAGMA table_info(contactos)`, (schemaErr2, cols2) => {
+            if (schemaErr2) {
+              reject(schemaErr2);
+              return;
+            }
+
+            const has = (name) => Array.isArray(cols2) && cols2.some((c) => c && c.name === name);
+            const ops = [];
+
+            if (!has('confirmado')) ops.push(`ALTER TABLE contactos ADD COLUMN confirmado INTEGER DEFAULT 0`);
+            if (!has('confirm_token')) ops.push(`ALTER TABLE contactos ADD COLUMN confirm_token TEXT`);
+            if (!has('confirm_token_expira')) ops.push(`ALTER TABLE contactos ADD COLUMN confirm_token_expira DATETIME`);
+            if (!has('confirmado_en')) ops.push(`ALTER TABLE contactos ADD COLUMN confirmado_en DATETIME`);
+
+            const ensureIdx = () => {
+              db.run(`CREATE INDEX IF NOT EXISTS idx_contactos_confirmado ON contactos(confirmado)`);
+              db.run(`CREATE INDEX IF NOT EXISTS idx_contactos_confirm_token ON contactos(confirm_token)`);
+            };
+
+            if (ops.length === 0) {
+              ensureIdx();
+              return;
+            }
+
+            // Ejecutar ALTERs en serie
+            db.serialize(() => {
+              ops.forEach((sql) => db.run(sql));
+              ensureIdx();
+            });
+          });
 
           // Migración ligera: agregar email a usuarios si falta (instalaciones viejas)
           db.all(`PRAGMA table_info(usuarios)`, (schemaErr, cols) => {
@@ -505,18 +541,70 @@ const contactosDB = {
   create: (data) => {
     return new Promise((resolve, reject) => {
       db.run(
-        `INSERT INTO contactos (nombre, email, telefono, empresa, mensaje)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO contactos (nombre, email, telefono, empresa, mensaje, confirmado)
+         VALUES (?, ?, ?, ?, ?, ?)`,
         [
           data.nombre,
           data.email,
           data.telefono || null,
           data.empresa || null,
-          data.mensaje || null
+          data.mensaje || null,
+          data.confirmado ? 1 : 0
         ],
         function(err) {
           if (err) reject(err);
           else resolve({ lastID: this.lastID, changes: this.changes });
+        }
+      );
+    });
+  },
+  setConfirmToken: ({ id, token, expiraEn }) => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE contactos SET confirm_token = ?, confirm_token_expira = ?, confirmado = 0, confirmado_en = NULL WHERE id = ?`,
+        [token, expiraEn || null, id],
+        function (err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes || 0 });
+        }
+      );
+    });
+  },
+  confirmByToken: ({ token }) => {
+    return new Promise((resolve, reject) => {
+      const t = typeof token === 'string' ? token.trim() : '';
+      if (!t) {
+        resolve({ ok: false, reason: 'missing' });
+        return;
+      }
+
+      db.get(
+        `SELECT * FROM contactos WHERE confirm_token = ?`,
+        [t],
+        (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          if (!row) {
+            resolve({ ok: false, reason: 'not_found' });
+            return;
+          }
+
+          const exp = row.confirm_token_expira ? new Date(row.confirm_token_expira) : null;
+          if (exp && !Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+            resolve({ ok: false, reason: 'expired' });
+            return;
+          }
+
+          db.run(
+            `UPDATE contactos SET confirmado = 1, confirmado_en = CURRENT_TIMESTAMP, confirm_token = NULL, confirm_token_expira = NULL WHERE id = ?`,
+            [row.id],
+            function (updErr) {
+              if (updErr) reject(updErr);
+              else resolve({ ok: true, contactoId: row.id, email: row.email });
+            }
+          );
         }
       );
     });
