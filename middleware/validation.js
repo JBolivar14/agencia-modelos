@@ -54,7 +54,13 @@ function validateAge(age) {
  * Middleware para validar datos de contacto
  */
 function validateContacto(req, res, next) {
-  const { nombre, email, telefono, empresa, mensaje } = req.body;
+  const { nombre, email, telefono, empresa, mensaje, website } = req.body;
+
+  // Honeypot anti-bots: si viene este campo completo, lo tratamos como spam
+  // Responder "ok" para no dar señales al bot.
+  if (website && String(website).trim()) {
+    return res.json({ success: true, message: 'OK' });
+  }
   
   // Validar nombre
   if (!nombre || !nombre.trim()) {
@@ -101,6 +107,8 @@ function validateContacto(req, res, next) {
   req.body.telefono = telefono ? sanitizeString(telefono, 20) : null;
   req.body.empresa = empresa ? sanitizeString(empresa, 100) : null;
   req.body.mensaje = mensaje ? sanitizeString(mensaje, 1000) : null;
+  // No persistir honeypot
+  if (req.body.website !== undefined) delete req.body.website;
   
   next();
 }

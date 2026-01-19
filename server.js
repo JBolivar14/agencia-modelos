@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
@@ -46,6 +48,7 @@ if (useSupabase) {
 const { validateContacto, validateModelo, validateLogin } = require('./middleware/validation');
 
 const app = express();
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'modelos';
@@ -86,7 +89,23 @@ if (process.env.NODE_ENV === 'production') {
 
 // Configurar sesiones
 // IMPORTANTE: En producción, usar variable de entorno SESSION_SECRET
-const SESSION_SECRET = process.env.SESSION_SECRET || 'agencia-modelos-secret-key-change-in-production';
+const DEFAULT_SESSION_SECRET = 'agencia-modelos-secret-key-change-in-production';
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ||
+  (process.env.NODE_ENV === 'production' ? null : DEFAULT_SESSION_SECRET);
+
+if (!SESSION_SECRET) {
+  throw new Error('SESSION_SECRET es obligatoria en producción.');
+}
+
+// Headers de seguridad (sin CSP para no romper assets)
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+  })
+);
+
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
@@ -99,6 +118,35 @@ app.use(session({
     sameSite: 'strict' // Protección CSRF
   }
 }));
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta más tarde.' })
+});
+
+const contactoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Demasiadas solicitudes. Intenta más tarde.' })
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Rate limit excedido. Intenta más tarde.' })
+});
+
+app.use('/api/admin', adminLimiter);
 
 function getUserFromAuthCookie(req) {
   try {
@@ -164,7 +212,7 @@ if (require('fs').existsSync(distPath)) {
 // Rutas de API (deben estar antes de las rutas de React)
 
 // API - Login
-app.post('/api/login', validateLogin, async (req, res) => {
+app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
     
@@ -222,9 +270,10 @@ app.post('/api/login', validateLogin, async (req, res) => {
       });
     });
   } catch (error) {
+    console.error('Error en login:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error en el login: ' + error.message 
+      message: 'Error en el login'
     });
   }
 });
@@ -644,7 +693,7 @@ app.delete('/api/admin/modelos/:id', requireAuth, async (req, res) => {
 });
 
 // API - Guardar contacto (público)
-app.post('/api/contacto', validateContacto, async (req, res) => {
+app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) => {
   try {
     const { nombre, email, telefono, empresa, mensaje } = req.body;
     

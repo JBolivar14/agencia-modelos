@@ -7,6 +7,8 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
@@ -49,6 +51,7 @@ if (useSupabase) {
 const { validateContacto, validateModelo, validateLogin } = require('../middleware/validation');
 
 const app = express();
+app.disable('x-powered-by');
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'modelos';
 const MAX_SIGNED_UPLOADS = 10;
@@ -84,9 +87,24 @@ app.use(cookieParser());
 // Importante para cookies "secure" detrás del proxy de Vercel
 app.set('trust proxy', 1);
 
+// Headers de seguridad (sin CSP para no romper assets)
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+  })
+);
+
 // Configurar sesiones para Vercel
 // IMPORTANTE: En producción, usar variable de entorno SESSION_SECRET
-const SESSION_SECRET = process.env.SESSION_SECRET || 'agencia-modelos-secret-key-change-in-production';
+const DEFAULT_SESSION_SECRET = 'agencia-modelos-secret-key-change-in-production';
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ||
+  (process.env.NODE_ENV === 'production' ? null : DEFAULT_SESSION_SECRET);
+
+if (!SESSION_SECRET) {
+  throw new Error('SESSION_SECRET es obligatoria en producción.');
+}
 
 // En Vercel, usar MemoryStore para sesiones (compatible con serverless)
 let sessionConfig = {
@@ -99,7 +117,8 @@ let sessionConfig = {
     secure: true, // HTTPS en Vercel
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 horas
-    sameSite: 'none' // Necesario para CORS en Vercel
+    // Misma app/origen (Vercel + dominio custom) → Lax protege mejor contra CSRF
+    sameSite: 'lax'
   }
 };
 
@@ -132,18 +151,103 @@ function getUserFromAuthCookie(req) {
   }
 }
 
-// CORS para Vercel
+function parseAllowedOrigins(value) {
+  if (!value) return [];
+  return String(value)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((o) => o.replace(/\/+$/, ''));
+}
+
+function getDefaultAllowedOrigins() {
+  const out = new Set();
+
+  // Producción Vercel (si está disponible)
+  if (process.env.VERCEL_URL) out.add(`https://${process.env.VERCEL_URL}`);
+  if (process.env.VERCEL_BRANCH_URL) out.add(`https://${process.env.VERCEL_BRANCH_URL}`);
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) out.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+
+  // Fallback del proyecto (por si no vienen vars de Vercel)
+  out.add('https://agencia-modelos.vercel.app');
+
+  // Permitir local para dev manual (no afecta producción si no se usa)
+  out.add('http://localhost:3000');
+  out.add('http://127.0.0.1:3000');
+
+  return [...out];
+}
+
+const ALLOWED_ORIGINS = new Set([
+  ...getDefaultAllowedOrigins(),
+  ...parseAllowedOrigins(process.env.ALLOWED_ORIGINS)
+]);
+
+// CORS estricto (evita exponer endpoints con credentials a terceros)
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+  const origin = req.headers.origin ? String(req.headers.origin) : '';
+
+  // Requests sin Origin (curl, navegación, etc.)
+  if (!origin) {
+    return next();
   }
-  next();
+
+  const originNorm = origin.replace(/\/+$/, '');
+  const xfProto = String(req.headers['x-forwarded-proto'] || 'https');
+  const xfHost = String(req.headers['x-forwarded-host'] || req.headers.host || '');
+  const selfOrigin = xfHost ? `${xfProto}://${xfHost}`.replace(/\/+$/, '') : '';
+
+  // Permitimos siempre el mismo origin del request (incluye dominios custom de Vercel)
+  const allowed = (selfOrigin && originNorm === selfOrigin) || ALLOWED_ORIGINS.has(originNorm);
+
+  if (allowed) {
+    res.setHeader('Access-Control-Allow-Origin', originNorm);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    return next();
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.status(403).end();
+  }
+
+  return res.status(403).json({ success: false, message: 'Origen no permitido' });
 });
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Demasiados intentos. Intenta más tarde.' })
+});
+
+const contactoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Demasiadas solicitudes. Intenta más tarde.' })
+});
+
+const adminLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Rate limit excedido. Intenta más tarde.' })
+});
+
+app.use('/api/admin', adminLimiter);
 
 // Middleware para verificar autenticación
 function requireAuth(req, res, next) {
@@ -167,7 +271,7 @@ function requireAuth(req, res, next) {
 }
 
 // API - Login
-app.post('/api/login', validateLogin, async (req, res) => {
+app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
     
@@ -223,9 +327,10 @@ app.post('/api/login', validateLogin, async (req, res) => {
       });
     });
   } catch (error) {
+    console.error('Error en login:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error en el login: ' + error.message 
+      message: 'Error en el login'
     });
   }
 });
@@ -634,7 +739,7 @@ app.delete('/api/admin/modelos/:id', requireAuth, async (req, res) => {
 });
 
 // API - Guardar contacto (público)
-app.post('/api/contacto', validateContacto, async (req, res) => {
+app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) => {
   try {
     const { nombre, email, telefono, empresa, mensaje } = req.body;
     

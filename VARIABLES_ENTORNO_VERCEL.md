@@ -10,6 +10,7 @@ Estas variables **DEBES** configurarlas en Vercel:
 USE_SUPABASE=true
 SUPABASE_URL=https://tu-proyecto.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+SESSION_SECRET=genera-uno-seguro-aqui
 ```
 
 ### 🟡 RECOMENDADAS (muy importantes)
@@ -18,7 +19,6 @@ Estas son altamente recomendadas:
 
 ```env
 SUPABASE_ANON_KEY=tu-anon-key
-SESSION_SECRET=genera-uno-seguro-aqui
 NODE_ENV=production
 ```
 

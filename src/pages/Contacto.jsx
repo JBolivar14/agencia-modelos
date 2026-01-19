@@ -11,6 +11,7 @@ function Contacto() {
     telefono: '',
     empresa: '',
     mensaje: '',
+    website: '', // honeypot anti-bots (debe quedar vacío)
   });
   const [loading, setLoading] = useState(false);
   const prefillDoneRef = useRef(false);
@@ -71,6 +72,7 @@ function Contacto() {
           telefono: '',
           empresa: '',
           mensaje: '',
+          website: '',
         });
       } else {
         toast.error(data.message || 'Error al enviar el formulario');
@@ -97,6 +99,17 @@ function Contacto() {
           </p>
           
           <form onSubmit={handleSubmit}>
+            {/* Honeypot anti-bots (oculto) */}
+            <input
+              type="text"
+              name="website"
+              tabIndex="-1"
+              autoComplete="off"
+              value={formData.website}
+              onChange={handleChange}
+              style={{ position: 'absolute', left: '-9999px', height: 0, width: 0, opacity: 0 }}
+              aria-hidden="true"
+            />
             <div className="form-group">
               <label htmlFor="nombre">Nombre completo *</label>
               <input
