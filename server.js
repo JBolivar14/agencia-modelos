@@ -313,7 +313,8 @@ app.get('/api/modelos/:id', async (req, res) => {
     }
     
     // Solo devolver modelos activas para usuarios públicos
-    if (modelo.activa !== 1) {
+    // En SQLite suele ser 0/1; en Supabase suele ser boolean
+    if (modelo.activa !== true && modelo.activa !== 1) {
       return res.status(404).json({ 
         success: false, 
         message: 'Modelo no encontrada' 

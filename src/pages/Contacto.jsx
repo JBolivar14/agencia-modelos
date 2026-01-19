@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import './Contacto.css';
 
 function Contacto() {
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
@@ -11,6 +13,26 @@ function Contacto() {
     mensaje: '',
   });
   const [loading, setLoading] = useState(false);
+  const prefillDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (prefillDoneRef.current) return;
+
+    const modelo = (searchParams.get('modelo') || '').trim();
+    const modeloId = (searchParams.get('modeloId') || '').trim();
+    if (!modelo && !modeloId) return;
+
+    prefillDoneRef.current = true;
+
+    setFormData((prev) => {
+      // Si el usuario ya escribió mensaje, no lo pisamos
+      if (prev.mensaje && prev.mensaje.trim()) return prev;
+
+      const ref = [modelo, modeloId ? `ID ${modeloId}` : null].filter(Boolean).join(' · ');
+      const mensaje = `Hola, me interesa la modelo ${ref}.`;
+      return { ...prev, mensaje };
+    });
+  }, [searchParams]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

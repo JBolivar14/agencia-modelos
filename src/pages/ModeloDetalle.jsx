@@ -230,7 +230,14 @@ function ModeloDetalle() {
                     </a>
                   )}
                   <button
-                    onClick={() => navigate('/contacto')}
+                    onClick={() => {
+                      const nombreCompleto = `${modelo.nombre || ''} ${modelo.apellido || ''}`.trim();
+                      const params = new URLSearchParams();
+                      if (nombreCompleto) params.set('modelo', nombreCompleto);
+                      if (modelo?.id) params.set('modeloId', String(modelo.id));
+                      const qs = params.toString();
+                      navigate(qs ? `/contacto?${qs}` : '/contacto');
+                    }}
                     className="btn-hero-action"
                   >
                     💬 Contactar
