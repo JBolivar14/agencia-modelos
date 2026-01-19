@@ -86,6 +86,11 @@ const usuariosDB = {
 
     if (error) {
       if (error.code === 'PGRST116') return null; // No encontrado
+      // Si la columna email no existe (migración faltante), no romper login por username
+      const msg = String(error?.message || '');
+      if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('email')) {
+        return null;
+      }
       throw error;
     }
     return data;
@@ -111,13 +116,55 @@ const usuariosDB = {
     return { lastID: data?.id, changes: 1 };
   },
   getAllAdmin: async () => {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('id, username, email, nombre, creado_en')
-      .order('creado_en', { ascending: false });
+    const candidates = [
+      {
+        fields: 'id, username, email, nombre, creado_en',
+        order: 'creado_en',
+        map: (u) => u
+      },
+      {
+        fields: 'id, username, nombre, creado_en',
+        order: 'creado_en',
+        map: (u) => ({ ...u, email: null })
+      },
+      {
+        fields: 'id, username, email, nombre, created_at',
+        order: 'created_at',
+        map: (u) => {
+          const { created_at, ...rest } = u || {};
+          return { ...rest, email: rest.email ?? null, creado_en: created_at ?? null };
+        }
+      },
+      {
+        fields: 'id, username, nombre, created_at',
+        order: 'created_at',
+        map: (u) => {
+          const { created_at, ...rest } = u || {};
+          return { ...rest, email: null, creado_en: created_at ?? null };
+        }
+      }
+    ];
 
-    if (error) throw error;
-    return data || [];
+    let lastError = null;
+    for (const c of candidates) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select(c.fields)
+        .order(c.order, { ascending: false });
+
+      if (!error) {
+        return (data || []).map(c.map);
+      }
+
+      // Solo intentar fallback en errores de columnas (migración/schema)
+      const msg = String(error?.message || '').toLowerCase();
+      const isColumnProblem = msg.includes('column') || msg.includes('does not exist') || msg.includes('unknown');
+      lastError = error;
+      if (!isColumnProblem) break;
+    }
+
+    throw lastError;
   },
   getById: async (id) => {
     const { data, error } = await supabase

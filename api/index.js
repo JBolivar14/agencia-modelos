@@ -377,7 +377,19 @@ app.get('/api/admin/usuarios', requireAuth, async (req, res) => {
     res.json({ success: true, usuarios: usuarios || [] });
   } catch (error) {
     console.error('Error obteniendo usuarios:', error);
-    res.status(500).json({ success: false, message: 'Error obteniendo usuarios' });
+    const msg = String(error?.message || '');
+    const safe =
+      msg && (
+        msg.toLowerCase().includes('column') ||
+        msg.toLowerCase().includes('does not exist') ||
+        msg.toLowerCase().includes('permission') ||
+        msg.toLowerCase().includes('relation') ||
+        msg.toLowerCase().includes('schema')
+      );
+    res.status(500).json({
+      success: false,
+      message: safe ? `Error obteniendo usuarios: ${msg}` : 'Error obteniendo usuarios'
+    });
   }
 });
 
