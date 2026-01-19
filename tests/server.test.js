@@ -40,12 +40,14 @@ jest.mock('../database', () => mockDatabase);
 const app = require('../server');
 
 describe('Server API Tests', () => {
-  let sessionCookie;
+  let authCookies;
+  let csrfToken;
   
   beforeEach(() => {
     // Limpiar mocks antes de cada test
     jest.clearAllMocks();
-    sessionCookie = null;
+    authCookies = null;
+    csrfToken = null;
   });
 
   afterAll(() => {
@@ -68,13 +70,24 @@ describe('Server API Tests', () => {
       .post('/api/login')
       .send({ username: 'admin', password: 'admin123' });
 
-    // Extraer cookie de sesión
-    const cookies = response.headers['set-cookie'];
-    if (cookies && cookies.length > 0) {
-      sessionCookie = cookies[0].split(';')[0];
-    }
-    
-    return sessionCookie;
+    // Extraer cookies de login (sessionId + adminToken)
+    const cookies = response.headers['set-cookie'] || [];
+    authCookies = cookies.map((c) => c.split(';')[0]);
+
+    // Obtener CSRF token (admin) y cookie csrfToken
+    const csrfRes = await request(app)
+      .get('/api/admin/csrf')
+      .set('Cookie', authCookies)
+      .expect(200);
+
+    csrfToken = csrfRes.body?.token;
+    const csrfCookies = csrfRes.headers['set-cookie'] || [];
+    const csrfCookieValues = csrfCookies.map((c) => c.split(';')[0]);
+
+    // Unificar cookies (sin duplicados)
+    authCookies = [...new Set([...(authCookies || []), ...csrfCookieValues])];
+
+    return { authCookies, csrfToken };
   };
 
   describe('GET /', () => {
@@ -318,7 +331,7 @@ describe('Server API Tests', () => {
 
       const response = await request(app)
         .get('/api/admin/modelos')
-        .set('Cookie', sessionCookie)
+        .set('Cookie', authCookies)
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -337,7 +350,8 @@ describe('Server API Tests', () => {
 
       const response = await request(app)
         .post('/api/admin/modelos')
-        .set('Cookie', sessionCookie)
+        .set('Cookie', authCookies)
+        .set('X-CSRF-Token', csrfToken)
         .send(modeloData)
         .expect(200);
 
@@ -350,7 +364,8 @@ describe('Server API Tests', () => {
 
       const response = await request(app)
         .post('/api/admin/modelos')
-        .set('Cookie', sessionCookie)
+        .set('Cookie', authCookies)
+        .set('X-CSRF-Token', csrfToken)
         .send({ apellido: 'Test' })
         .expect(400);
 
@@ -365,7 +380,8 @@ describe('Server API Tests', () => {
 
       const response = await request(app)
         .post('/api/admin/generar-qr')
-        .set('Cookie', sessionCookie)
+        .set('Cookie', authCookies)
+        .set('X-CSRF-Token', csrfToken)
         .expect(200);
 
       expect(response.body.success).toBe(true);

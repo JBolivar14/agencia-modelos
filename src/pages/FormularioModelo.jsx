@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
+import { csrfFetch } from '../utils/csrf';
 import './FormularioModelo.css';
 
 function FormularioModelo() {
@@ -121,10 +122,9 @@ function FormularioModelo() {
   };
 
   const requestSignedUploadUrls = async (files) => {
-    const response = await fetch('/api/admin/storage/modelo-fotos/signed-urls', {
+    const response = await csrfFetch('/api/admin/storage/modelo-fotos/signed-urls', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({
         files: files.map((f) => ({ name: f.name, type: f.type }))
       })
@@ -235,12 +235,11 @@ function FormularioModelo() {
       
       const method = isEdit ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await csrfFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({
           ...formData,
           fotos: fotos

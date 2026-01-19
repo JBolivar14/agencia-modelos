@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
+import { csrfFetch } from '../utils/csrf';
 import './Admin.css';
 
 function Admin() {
@@ -9,6 +10,7 @@ function Admin() {
   const [modelos, setModelos] = useState([]);
   const [contactos, setContactos] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [expandedAuditKey, setExpandedAuditKey] = useState(null);
   const [qrData, setQrData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -56,6 +58,43 @@ function Admin() {
     totalPages: 1
   });
   const navigate = useNavigate();
+
+  const formatAuditDate = (value) => {
+    try {
+      const dt = new Date(value);
+      if (Number.isNaN(dt.getTime())) return '';
+      return dt.toLocaleString();
+    } catch (_) {
+      return '';
+    }
+  };
+
+  const shortText = (s, max = 42) => {
+    const str = typeof s === 'string' ? s : '';
+    if (str.length <= max) return str;
+    return `${str.slice(0, Math.max(0, max - 1))}…`;
+  };
+
+  const prettyJson = (meta) => {
+    if (!meta) return '';
+    try {
+      if (typeof meta === 'string') {
+        // SQLite guarda meta como TEXT (a veces JSON)
+        const trimmed = meta.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          return JSON.stringify(JSON.parse(trimmed), null, 2);
+        }
+        return trimmed;
+      }
+      return JSON.stringify(meta, null, 2);
+    } catch (_) {
+      try {
+        return String(meta);
+      } catch (__) {
+        return '';
+      }
+    }
+  };
 
   useEffect(() => {
     checkAuth();
@@ -221,10 +260,9 @@ function Admin() {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/modelos/bulk', {
+      const response = await csrfFetch('/api/admin/modelos/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ action, ids })
       });
 
@@ -339,9 +377,8 @@ function Admin() {
 
   const generarQR = async () => {
     try {
-      const response = await fetch('/api/admin/generar-qr', {
+      const response = await csrfFetch('/api/admin/generar-qr', {
         method: 'POST',
-        credentials: 'include',
       });
       
       if (!response.ok) {
@@ -408,9 +445,8 @@ function Admin() {
       return;
     }
     try {
-      const response = await fetch(`/api/admin/modelos/${id}`, {
+      const response = await csrfFetch(`/api/admin/modelos/${id}`, {
         method: 'DELETE',
-        credentials: 'include',
       });
       const data = await response.json();
       if (data.success) {
@@ -946,8 +982,8 @@ function Admin() {
                 <p>Cargando...</p>
               ) : (
                 <>
-                  <div style={{ overflowX: 'auto' }}>
-                    <table className="admin-table">
+                  <div className="audit-table-container">
+                    <table className="audit-table">
                       <thead>
                         <tr>
                           <th>Fecha</th>
@@ -956,22 +992,102 @@ function Admin() {
                           <th>Usuario</th>
                           <th>IP</th>
                           <th>Ruta</th>
+                          <th></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(auditLogs || []).map((log) => (
-                          <tr key={log.id || `${log.event_type}-${log.creado_en || log.created_at}`}>
-                            <td>{new Date(log.created_at || log.creado_en || Date.now()).toLocaleString()}</td>
-                            <td>{log.severity || ''}</td>
-                            <td>{log.event_type || ''}</td>
-                            <td>{log.actor_username || (log.actor_user_id ? `ID ${log.actor_user_id}` : '')}</td>
-                            <td>{log.ip || ''}</td>
-                            <td>{log.path || ''}</td>
-                          </tr>
-                        ))}
+                        {(auditLogs || []).map((log) => {
+                          const createdAt = log.created_at || log.creado_en || null;
+                          const key = String(log.id || `${log.event_type}-${createdAt || 'no-date'}-${log.ip || ''}`);
+                          const isOpen = expandedAuditKey === key;
+
+                          const sev = String(log.severity || '').toLowerCase();
+                          const sevClass = sev === 'warn' ? 'warn' : sev === 'error' ? 'error' : 'info';
+
+                          const actor =
+                            log.actor_username ||
+                            (log.actor_user_id ? `ID ${log.actor_user_id}` : '');
+
+                          const metaText = prettyJson(log.meta);
+                          const userAgent = log.user_agent || '';
+                          const method = log.method || '';
+                          const path = log.path || '';
+
+                          return (
+                            <React.Fragment key={key}>
+                              <tr className={isOpen ? 'audit-row open' : 'audit-row'}>
+                                <td className="audit-cell-date" title={formatAuditDate(createdAt)}>
+                                  {formatAuditDate(createdAt)}
+                                </td>
+                                <td>
+                                  <span className={`audit-badge audit-badge-${sevClass}`}>
+                                    {sev || 'info'}
+                                  </span>
+                                </td>
+                                <td title={log.event_type || ''}>
+                                  <span className="audit-event">{log.event_type || ''}</span>
+                                </td>
+                                <td className="audit-cell-clip" title={actor}>
+                                  {shortText(actor, 26)}
+                                </td>
+                                <td className="audit-cell-clip" title={log.ip || ''}>
+                                  {shortText(log.ip || '', 20)}
+                                </td>
+                                <td className="audit-cell-clip" title={path}>
+                                  {shortText(path, 48)}
+                                </td>
+                                <td className="audit-cell-action">
+                                  <button
+                                    type="button"
+                                    className="btn-secondary audit-btn"
+                                    onClick={() => setExpandedAuditKey((prev) => (prev === key ? null : key))}
+                                  >
+                                    {isOpen ? 'Ocultar' : 'Detalle'}
+                                  </button>
+                                </td>
+                              </tr>
+
+                              {isOpen && (
+                                <tr className="audit-detail-row">
+                                  <td colSpan={7}>
+                                    <div className="audit-detail">
+                                      <div className="audit-detail-grid">
+                                        <div>
+                                          <div className="audit-detail-label">Método</div>
+                                          <div className="audit-detail-value">{method || '-'}</div>
+                                        </div>
+                                        <div>
+                                          <div className="audit-detail-label">Ruta</div>
+                                          <div className="audit-detail-value audit-detail-mono">{path || '-'}</div>
+                                        </div>
+                                        <div>
+                                          <div className="audit-detail-label">IP</div>
+                                          <div className="audit-detail-value audit-detail-mono">{log.ip || '-'}</div>
+                                        </div>
+                                        <div>
+                                          <div className="audit-detail-label">User-Agent</div>
+                                          <div className="audit-detail-value audit-detail-mono">
+                                            {userAgent ? shortText(userAgent, 120) : '-'}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {metaText && (
+                                        <div className="audit-meta">
+                                          <div className="audit-detail-label">Meta</div>
+                                          <pre className="audit-meta-pre">{metaText}</pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
                         {(!auditLogs || auditLogs.length === 0) && (
                           <tr>
-                            <td colSpan={6} style={{ textAlign: 'center', opacity: 0.8 }}>
+                            <td colSpan={7} style={{ textAlign: 'center', opacity: 0.8 }}>
                               No hay logs para mostrar
                             </td>
                           </tr>

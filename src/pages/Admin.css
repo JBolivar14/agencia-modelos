@@ -202,6 +202,142 @@
   margin-top: 1rem;
 }
 
+.audit-table-container {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.audit-table th {
+  background: linear-gradient(135deg, #CB262C 0%, #0483B8 100%);
+  color: white;
+  padding: 0.85rem 0.9rem;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.audit-table td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.audit-row:hover {
+  background: #f9fafb;
+}
+
+.audit-cell-date {
+  white-space: nowrap;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-cell-clip {
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audit-cell-action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.audit-btn {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.audit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: lowercase;
+}
+
+.audit-badge-info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.audit-badge-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.audit-badge-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.audit-event {
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.audit-detail-row td {
+  padding: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.audit-detail {
+  background: #f9fafb;
+  border-left: 4px solid rgba(4, 131, 184, 0.35);
+  padding: 1rem 1rem;
+}
+
+.audit-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.audit-detail-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.audit-detail-value {
+  color: #111827;
+  font-size: 0.95rem;
+  line-height: 1.25rem;
+}
+
+.audit-detail-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.audit-meta-pre {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: auto;
+  max-height: 260px;
+  font-size: 0.85rem;
+  line-height: 1.2rem;
+}
+
 .modelos-table,
 .contactos-table {
   width: 100%;
@@ -333,5 +469,18 @@
   .modelos-table td,
   .contactos-table td {
     padding: 0.5rem;
+  }
+
+  .audit-table {
+    font-size: 0.875rem;
+  }
+
+  .audit-table th,
+  .audit-table td {
+    padding: 0.5rem;
+  }
+
+  .audit-detail-grid {
+    grid-template-columns: 1fr;
   }
 }

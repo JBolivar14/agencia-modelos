@@ -56,6 +56,7 @@ const PORT = process.env.PORT || 3000;
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'modelos';
 const MAX_SIGNED_UPLOADS = 10;
 const AUTH_COOKIE_NAME = 'adminToken';
+const CSRF_COOKIE_NAME = 'csrfToken';
 
 function createSupabaseAdminClient() {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -203,6 +204,42 @@ function auditLogSafe(req, entry) {
   }
 }
 
+function ensureCsrfTokenCookie(req, res) {
+  const existing = req.cookies?.[CSRF_COOKIE_NAME];
+  if (existing && typeof existing === 'string' && existing.length >= 16) return existing;
+
+  const token = crypto.randomBytes(32).toString('hex');
+  res.cookie(CSRF_COOKIE_NAME, token, {
+    httpOnly: false, // debe ser accesible desde el frontend para enviarlo en header
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 2 * 60 * 60 * 1000, // 2 horas
+    path: '/'
+  });
+  return token;
+}
+
+function requireCsrf(req, res, next) {
+  const method = String(req.method || '').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+
+  const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
+  const headerToken =
+    req.get('x-csrf-token') ||
+    req.get('x-xsrf-token') ||
+    req.get('csrf-token') ||
+    req.get('xsrf-token');
+
+  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    return res.status(403).json({
+      success: false,
+      message: 'CSRF token inválido o faltante'
+    });
+  }
+
+  return next();
+}
+
 // Middleware para verificar autenticación
 function requireAuth(req, res, next) {
   const cookieUser = getUserFromAuthCookie(req);
@@ -224,6 +261,12 @@ function requireAuth(req, res, next) {
     res.redirect('/login');
   }
 }
+
+// CSRF token (admin)
+app.get('/api/admin/csrf', requireAuth, (req, res) => {
+  const token = ensureCsrfTokenCookie(req, res);
+  res.json({ success: true, token });
+});
 
 // Ruta para favicon (evitar error 404)
 app.get('/favicon.ico', (req, res) => {
@@ -476,7 +519,7 @@ app.get('/api/admin/modelos', requireAuth, async (req, res) => {
 
 // API - Supabase Storage: crear signed upload URLs (admin)
 // Nota: el upload se hace directo desde el navegador a Storage usando signedUrl (evita límites de body en serverless)
-app.post('/api/admin/storage/modelo-fotos/signed-urls', requireAuth, async (req, res) => {
+app.post('/api/admin/storage/modelo-fotos/signed-urls', requireAuth, requireCsrf, async (req, res) => {
   try {
     if (!useSupabase) {
       return res.status(400).json({ success: false, message: 'Supabase no está habilitado en este entorno' });
@@ -541,7 +584,7 @@ app.post('/api/admin/storage/modelo-fotos/signed-urls', requireAuth, async (req,
 });
 
 // API - Acciones masivas de modelos (admin)
-app.post('/api/admin/modelos/bulk', requireAuth, async (req, res) => {
+app.post('/api/admin/modelos/bulk', requireAuth, requireCsrf, async (req, res) => {
   try {
     const { action, ids } = req.body || {};
 
@@ -624,7 +667,7 @@ app.get('/api/admin/modelos/:id', requireAuth, async (req, res) => {
 });
 
 // API - Crear modelo (admin)
-app.post('/api/admin/modelos', requireAuth, validateModelo, async (req, res) => {
+app.post('/api/admin/modelos', requireAuth, requireCsrf, validateModelo, async (req, res) => {
   try {
     const { fotos, ...modeloData } = req.body;
     
@@ -665,7 +708,7 @@ app.post('/api/admin/modelos', requireAuth, validateModelo, async (req, res) => 
 });
 
 // API - Actualizar modelo (admin)
-app.put('/api/admin/modelos/:id', requireAuth, validateModelo, async (req, res) => {
+app.put('/api/admin/modelos/:id', requireAuth, requireCsrf, validateModelo, async (req, res) => {
   try {
     const { id } = req.params;
     const modeloId = parseInt(id);
@@ -719,7 +762,7 @@ app.put('/api/admin/modelos/:id', requireAuth, validateModelo, async (req, res) 
 });
 
 // API - Eliminar modelo (admin)
-app.delete('/api/admin/modelos/:id', requireAuth, async (req, res) => {
+app.delete('/api/admin/modelos/:id', requireAuth, requireCsrf, async (req, res) => {
   try {
     const { id } = req.params;
     const modeloId = parseInt(id);
@@ -874,7 +917,7 @@ app.get('/api/admin/contactos', requireAuth, async (req, res) => {
 });
 
 // API - Generar QR (admin)
-app.post('/api/admin/generar-qr', requireAuth, async (req, res) => {
+app.post('/api/admin/generar-qr', requireAuth, requireCsrf, async (req, res) => {
   try {
     const protocol = req.protocol;
     const host = req.get('host');
