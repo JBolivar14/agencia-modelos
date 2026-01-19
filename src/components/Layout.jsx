@@ -9,8 +9,8 @@ function Layout() {
     <div className="app-layout">
       <header className="header" role="banner">
         <div className="container">
-          <Link to="/" className="logo" aria-label="Agencia Modelos">
-            Agencia Modelos
+          <Link to="/" className="logo" aria-label="Agencia Modelos Argentinas">
+            Agencia Modelos Argentinas
           </Link>
           <nav role="navigation" aria-label="Navegación principal">
             <Link
@@ -44,7 +44,7 @@ function Layout() {
         <div className="footer-container">
           <div className="footer-content">
             <div className="footer-brand">
-              <h3 className="footer-logo">Agencia Modelos</h3>
+              <h3 className="footer-logo">Agencia Modelos Argentinas</h3>
               <p className="footer-tagline">Descubre el talento y profesionalismo</p>
             </div>
             <div className="footer-links">
@@ -56,7 +56,7 @@ function Layout() {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2025 Agencia Modelos. Todos los derechos reservados.</p>
+            <p>&copy; 2025 Agencia Modelos Argentinas. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

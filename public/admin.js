@@ -225,13 +225,13 @@ async function compartirQR() {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
-    const shareText = 'Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros:';
+    const shareText = 'Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros:';
     
     // Verificar si Web Share API está disponible
     if (navigator.share) {
         try {
             await navigator.share({
-                title: 'Agencia Modelos - Comparte tus datos',
+                title: 'Agencia Modelos Argentinas - Comparte tus datos',
                 text: shareText,
                 url: url
             });
@@ -276,7 +276,7 @@ function compartirWhatsApp() {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
-    const text = encodeURIComponent('Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros: ' + url);
+    const text = encodeURIComponent('Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros: ' + url);
     window.open(`https://wa.me/?text=${text}`, '_blank');
     if (window.toast) {
         toast.success('Abriendo WhatsApp...');
@@ -303,7 +303,7 @@ function compartirTwitter() {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
-    const text = encodeURIComponent('Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros:');
+    const text = encodeURIComponent('Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros:');
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
     if (window.toast) {
         toast.success('Abriendo Twitter...');
@@ -317,7 +317,7 @@ function compartirX() {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
-    const text = encodeURIComponent('Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros:');
+    const text = encodeURIComponent('Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros:');
     window.open(`https://x.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
     if (window.toast) {
         toast.success('Abriendo X...');
@@ -331,7 +331,7 @@ function compartirInstagram() {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
-    const text = encodeURIComponent('Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros: ' + url);
+    const text = encodeURIComponent('Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros: ' + url);
     // Instagram no tiene un share URL directo, así que abrimos la app o web
     // Nota: Instagram requiere que el contenido se comparta desde la app móvil
     // En desktop, redirigimos a crear una nueva publicación
@@ -381,8 +381,8 @@ function compartirEmail() {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
-    const subject = encodeURIComponent('Agencia Modelos - Comparte tus datos');
-    const body = encodeURIComponent(`Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros:\n\n${url}`);
+    const subject = encodeURIComponent('Agencia Modelos Argentinas - Comparte tus datos');
+    const body = encodeURIComponent(`Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros:\n\n${url}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
     if (window.toast) {
         toast.success('Abriendo cliente de email...');
@@ -396,7 +396,7 @@ function compartirTelegram() {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
-    const text = encodeURIComponent('Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros: ' + url);
+    const text = encodeURIComponent('Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros: ' + url);
     window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`, '_blank');
     if (window.toast) {
         toast.success('Abriendo Telegram...');

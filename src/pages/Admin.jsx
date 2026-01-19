@@ -426,8 +426,8 @@ function Admin() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Agencia Modelos - Comparte tus datos',
-          text: 'Agencia Modelos le gustaría conocerte más. Comparte tus datos con nosotros:',
+          title: 'Agencia Modelos Argentinas - Comparte tus datos',
+          text: 'Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros:',
           url: qrData.url,
         });
         toast.success('¡Compartido exitosamente!');

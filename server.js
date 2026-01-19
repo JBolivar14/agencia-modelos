@@ -979,7 +979,7 @@ if (require('fs').existsSync(distIndexPath)) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Agencia Modelos - Desarrollo</title>
+          <title>Agencia Modelos Argentinas - Desarrollo</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 40px; text-align: center; }
             h1 { color: #0483B8; }

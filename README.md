@@ -1,4 +1,4 @@
-# 👗 Agencia Modelos - Portal Web
+# 👗 Agencia Modelos Argentinas - Portal Web
 
 Aplicación web completa desarrollada con **React + Vite** y **Node.js + Express** para gestionar y mostrar un catálogo de modelos profesionales. Incluye panel de administración, galería pública, páginas de detalle y sistema de contacto mediante QR.
 
@@ -257,4 +257,4 @@ ISC
 
 ---
 
-**Desarrollado para Agencia Modelos** 👗✨
+**Desarrollado para Agencia Modelos Argentinas** 👗✨
