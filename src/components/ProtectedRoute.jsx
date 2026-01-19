@@ -7,7 +7,7 @@ function ProtectedRoute({ children }) {
 
   useEffect(() => {
     // Verificar si hay sesión activa
-    fetch('/api/session')
+    fetch('/api/session', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         setIsAuthenticated(data.authenticated);

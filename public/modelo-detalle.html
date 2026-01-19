@@ -1181,10 +1181,6 @@
                                 <span class="btn-icon">✉️</span>
                                 <span>Email</span>
                             </a>
-                            <a id="btnTelefono" href="#" class="btn-hero-action" style="display: none;">
-                                <span class="btn-icon">📱</span>
-                                <span>Llamar</span>
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -1582,9 +1578,8 @@
                             <div class="contact-icon-wrapper">📱</div>
                             <div class="contact-info-wrapper">
                                 <div class="contact-label-text">Teléfono</div>
-                                <a href="tel:${escapeHtml(modelo.telefono)}" class="contact-value-text">${escapeHtml(modelo.telefono)}</a>
+                                <span class="contact-value-text">${escapeHtml(modelo.telefono)}</span>
                             </div>
-                            <a href="tel:${escapeHtml(modelo.telefono)}" class="contact-action-btn">→</a>
                         </div>
                     `);
                 }
@@ -1599,7 +1594,6 @@
             // Botones de acción
             const btnContactar = document.getElementById('btnContactar');
             const btnEmail = document.getElementById('btnEmail');
-            const btnTelefono = document.getElementById('btnTelefono');
             
             if (btnContactar) {
                 btnContactar.href = `/contacto?modelo=${encodeURIComponent(nombreCompleto)}`;
@@ -1608,11 +1602,6 @@
             if (modelo.email && btnEmail) {
                 btnEmail.href = `mailto:${escapeHtml(modelo.email)}`;
                 btnEmail.style.display = 'flex';
-            }
-            
-            if (modelo.telefono && btnTelefono) {
-                btnTelefono.href = `tel:${escapeHtml(modelo.telefono)}`;
-                btnTelefono.style.display = 'flex';
             }
         }
 

@@ -16,7 +16,7 @@ function Login() {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/api/session');
+      const response = await fetch('/api/session', { credentials: 'include' });
       const data = await response.json();
       if (data.authenticated) {
         navigate('/admin', { replace: true });

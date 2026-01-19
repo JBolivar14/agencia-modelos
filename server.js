@@ -2,6 +2,8 @@ const express = require('express');
 const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 const path = require('path');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
@@ -48,6 +50,7 @@ const PORT = process.env.PORT || 3000;
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'modelos';
 const MAX_SIGNED_UPLOADS = 10;
+const AUTH_COOKIE_NAME = 'adminToken';
 
 function createSupabaseAdminClient() {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -74,6 +77,12 @@ function getImageExtension(filename, mimeType) {
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+if (process.env.NODE_ENV === 'production') {
+  // Para cookies "secure" detrás de proxies (Vercel / reverse proxy)
+  app.set('trust proxy', 1);
+}
 
 // Configurar sesiones
 // IMPORTANTE: En producción, usar variable de entorno SESSION_SECRET
@@ -91,8 +100,30 @@ app.use(session({
   }
 }));
 
+function getUserFromAuthCookie(req) {
+  try {
+    const token = req.cookies?.[AUTH_COOKIE_NAME];
+    if (!token) return null;
+    const payload = jwt.verify(token, SESSION_SECRET);
+    if (!payload || !payload.userId) return null;
+    return {
+      id: payload.userId,
+      username: payload.username,
+      nombre: payload.nombre
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 // Middleware para verificar autenticación
 function requireAuth(req, res, next) {
+  const cookieUser = getUserFromAuthCookie(req);
+  if (cookieUser) {
+    req.authUser = cookieUser;
+    return next();
+  }
+
   if (req.session && req.session.userId) {
     return next();
   } else {
@@ -162,14 +193,33 @@ app.post('/api/login', validateLogin, async (req, res) => {
       });
     }
     
+    // Mantener sesión para local/tests (server.js) ...
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.nombre = user.nombre;
-    
-    res.json({ 
-      success: true, 
-      message: 'Login exitoso',
-      user: { id: user.id, username: user.username, nombre: user.nombre }
+
+    // ... y además cookie firmada (funciona en serverless / sin store compartido)
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, nombre: user.nombre },
+      SESSION_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.cookie(AUTH_COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/'
+    });
+
+    // Asegurar que la sesión quede persistida antes de responder (evita race conditions)
+    req.session.save(() => {
+      res.json({
+        success: true,
+        message: 'Login exitoso',
+        user: { id: user.id, username: user.username, nombre: user.nombre }
+      });
     });
   } catch (error) {
     res.status(500).json({ 
@@ -181,6 +231,14 @@ app.post('/api/login', validateLogin, async (req, res) => {
 
 // API - Verificar sesión
 app.get('/api/session', (req, res) => {
+  const cookieUser = getUserFromAuthCookie(req);
+  if (cookieUser) {
+    return res.json({
+      authenticated: true,
+      user: cookieUser
+    });
+  }
+
   if (req.session && req.session.userId) {
     res.json({ 
       authenticated: true, 
@@ -197,9 +255,14 @@ app.get('/api/session', (req, res) => {
 
 // API - Logout
 app.get('/api/logout', (req, res) => {
-  req.session.destroy(() => {
+  res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
+  if (req.session) {
+    req.session.destroy(() => {
+      res.redirect('/login');
+    });
+  } else {
     res.redirect('/login');
-  });
+  }
 });
 
 // API - Modelos (público)
@@ -684,9 +747,14 @@ app.post('/api/admin/generar-qr', requireAuth, async (req, res) => {
 
 // Ruta de logout (compatibilidad)
 app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
+  res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
+  if (req.session) {
+    req.session.destroy(() => {
+      res.redirect('/login');
+    });
+  } else {
     res.redirect('/login');
-  });
+  }
 });
 
 // Servir la app React para todas las rutas no-API

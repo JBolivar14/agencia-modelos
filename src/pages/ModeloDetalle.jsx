@@ -229,14 +229,6 @@ function ModeloDetalle() {
                       📧 Email
                     </a>
                   )}
-                  {modelo.telefono && (
-                    <a
-                      href={`tel:${modelo.telefono}`}
-                      className="btn-hero-contact"
-                    >
-                      📞 Llamar
-                    </a>
-                  )}
                   <button
                     onClick={() => navigate('/contacto')}
                     className="btn-hero-action"
