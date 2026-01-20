@@ -4,9 +4,10 @@ import { toast } from '../utils/toast';
 import './Login.css';
 
 function Login() {
-  const [mode, setMode] = useState('login'); // login | register
+  const [mode, setMode] = useState('login'); // login | register | forgot
   const [username, setUsername] = useState(''); // login: username/email
   const [password, setPassword] = useState(''); // login password
+  const [forgotEmail, setForgotEmail] = useState('');
 
   // Registro público (modelo / postulante)
   const [registroNombre, setRegistroNombre] = useState('');
@@ -128,6 +129,32 @@ function Login() {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const email = (forgotEmail || '').trim();
+      if (!email) throw new Error('Ingresá tu email');
+      const res = await fetch('/api/usuarios/password/forgot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || 'No se pudo enviar el link');
+      }
+      toast.success(data.message || 'Revisá tu email para restablecer la contraseña.');
+      setForgotEmail('');
+      setMode('login');
+    } catch (error) {
+      toast.error(error.message || 'Error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="login-page">
       <div className="container">
@@ -138,6 +165,11 @@ function Login() {
             {mode === 'register' && (
               <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.95rem', opacity: 0.9 }}>
                 Te vamos a enviar un email para confirmar tu dirección.
+              </span>
+            )}
+            {mode === 'forgot' && (
+              <span style={{ display: 'block', marginTop: '0.5rem', fontSize: '0.95rem', opacity: 0.9 }}>
+                Te enviaremos un link para restablecer tu contraseña.
               </span>
             )}
           </p>
@@ -203,8 +235,23 @@ function Login() {
                   'Iniciar Sesión'
                 )}
               </button>
+
+              <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  className="back-link"
+                  style={{ background: 'transparent', border: 0, cursor: 'pointer' }}
+                  onClick={() => {
+                    setForgotEmail(username || '');
+                    setMode('forgot');
+                  }}
+                  disabled={loading}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
             </form>
-          ) : (
+          ) : mode === 'register' ? (
             <form onSubmit={handleRegistro}>
               <div className="form-group">
                 <label htmlFor="registroNombre">Nombre completo</label>
@@ -276,6 +323,46 @@ function Login() {
                   'Crear mi cuenta'
                 )}
               </button>
+            </form>
+          ) : (
+            <form onSubmit={handleForgotPassword}>
+              <div className="form-group">
+                <label htmlFor="forgotEmail">Email</label>
+                <input
+                  type="email"
+                  id="forgotEmail"
+                  name="forgotEmail"
+                  required
+                  placeholder="tuemail@ejemplo.com"
+                  autoComplete="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <button type="submit" className="btn-submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="loader"></span>
+                    Enviando...
+                  </>
+                ) : (
+                  'Enviar link de reseteo'
+                )}
+              </button>
+
+              <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  className="back-link"
+                  style={{ background: 'transparent', border: 0, cursor: 'pointer' }}
+                  onClick={() => setMode('login')}
+                  disabled={loading}
+                >
+                  Volver
+                </button>
+              </div>
             </form>
           )}
           

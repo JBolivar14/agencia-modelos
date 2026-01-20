@@ -151,6 +151,15 @@ const userRegisterLimiter = rateLimit({
     res.status(429).json({ success: false, message: 'Demasiados registros. Intenta más tarde.' })
 });
 
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Demasiadas solicitudes. Intenta más tarde.' })
+});
+
 const adminLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 300,
@@ -544,6 +553,118 @@ app.get('/api/usuarios/confirm', async (req, res) => {
   } catch (error) {
     console.error('Error confirmando usuario:', error);
     return res.status(500).json({ success: false, message: 'Error confirmando cuenta' });
+  }
+});
+
+// Password reset - solicitar link (público)
+app.post('/api/usuarios/password/forgot', passwordResetLimiter, async (req, res) => {
+  try {
+    const emailRaw = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const email = emailRaw.toLowerCase();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailOk) {
+      return res.status(400).json({ success: false, message: 'El email no es válido' });
+    }
+
+    const baseUrl = getBaseUrl(req);
+    const emailCfg = getEmailConfig();
+
+    // Respuesta genérica anti-enumeración
+    const genericOk = () =>
+      res.json({
+        success: true,
+        message: 'Si el email existe, te enviamos un link para restablecer tu contraseña.'
+      });
+
+    if (!usuariosDB || typeof usuariosDB.getByEmail !== 'function' || typeof usuariosDB.setResetToken !== 'function') {
+      return genericOk();
+    }
+
+    const user = await usuariosDB.getByEmail(email);
+    if (!user || !user.id) {
+      auditLogSafe(req, { event_type: 'password_reset_request', severity: 'info', meta: { emailDomain: email.split('@').pop() || null, found: false } });
+      return genericOk();
+    }
+
+    // Solo permitir reset si está confirmado (evita mezclar con flujo de confirmación)
+    const rol = user.rol || 'admin';
+    const isConfirmed = user.confirmado === true || user.confirmado === 1;
+    if (rol === 'modelo' && !isConfirmed) {
+      auditLogSafe(req, { event_type: 'password_reset_request', severity: 'warn', meta: { userId: user.id, rol, blocked: 'not_confirmed' } });
+      return genericOk();
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1h
+    await usuariosDB.setResetToken({ id: user.id, token, expiraEn: expiresAt });
+
+    const resetUrl = baseUrl ? `${baseUrl}/reset-password?token=${encodeURIComponent(token)}` : '';
+    let emailSent = false;
+    if (resetUrl) {
+      const r = await sendEmail({
+        to: email,
+        subject: 'Restablecer contraseña - Agencia Modelos Argentinas',
+        text:
+          `Hola ${user.nombre || ''},\n\n` +
+          `Para restablecer tu contraseña, ingresá acá:\n${resetUrl}\n\n` +
+          `Este link vence en 1 hora.\n`,
+        html:
+          `<p>Hola <strong>${String(user.nombre || '')}</strong>,</p>` +
+          `<p>Para restablecer tu contraseña, hacé clic acá:</p>` +
+          `<p><a href="${resetUrl}">Restablecer contraseña</a></p>` +
+          `<p>Este link vence en 1 hora.</p>`
+      });
+      emailSent = !!r?.ok;
+    }
+
+    auditLogSafe(req, {
+      event_type: 'password_reset_request',
+      severity: 'info',
+      meta: { userId: user.id, rol, emailDomain: email.split('@').pop() || null, emailSent, emailCfgOk: !!emailCfg?.ok }
+    });
+    return genericOk();
+  } catch (error) {
+    console.error('Error solicitando reset password:', error);
+    // Siempre responder genérico para no filtrar info
+    return res.json({
+      success: true,
+      message: 'Si el email existe, te enviamos un link para restablecer tu contraseña.'
+    });
+  }
+});
+
+// Password reset - aplicar nueva contraseña (público)
+app.post('/api/usuarios/password/reset', passwordResetLimiter, async (req, res) => {
+  try {
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!token) return res.status(400).json({ success: false, message: 'Token inválido' });
+    if (!password || password.trim().length < 8) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    if (!usuariosDB || typeof usuariosDB.resetPasswordByToken !== 'function') {
+      return res.status(500).json({ success: false, message: 'Reset no disponible' });
+    }
+
+    const passwordHash = await bcrypt.hash(password.trim(), 10);
+    const result = await usuariosDB.resetPasswordByToken({ token, passwordHash });
+    if (!result?.ok) {
+      const reason = result?.reason || 'invalid';
+      const msg = reason === 'expired' ? 'El link expiró. Pedí uno nuevo.' : 'Token inválido';
+      return res.status(400).json({ success: false, message: msg, reason });
+    }
+
+    auditLogSafe(req, { event_type: 'password_reset_success', severity: 'info', meta: { usuarioId: result.usuarioId } });
+    return res.json({ success: true, message: 'Contraseña actualizada. Ya podés iniciar sesión.' });
+  } catch (error) {
+    console.error('Error reseteando contraseña:', error);
+    const msg = String(error?.message || '');
+    if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('reset')) {
+      return res.status(500).json({ success: false, message: 'Falta migración de reset de contraseña en Supabase. Ejecutá supabase-usuarios-reset-password.sql' });
+    }
+    return res.status(500).json({ success: false, message: 'Error reseteando contraseña' });
   }
 });
 

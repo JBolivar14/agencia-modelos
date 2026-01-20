@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Admin from './pages/Admin';
 import FormularioModelo from './pages/FormularioModelo';
 import ConfirmarEmail from './pages/ConfirmarEmail';
+import ResetPassword from './pages/ResetPassword';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -18,6 +19,7 @@ function App() {
         <Route path="modelo/:id" element={<ModeloDetalle />} />
         <Route path="contacto" element={<Contacto />} />
         <Route path="confirmar" element={<ConfirmarEmail />} />
+        <Route path="reset-password" element={<ResetPassword />} />
         <Route path="login" element={<Login />} />
         <Route
           path="admin"

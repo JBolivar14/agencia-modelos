@@ -283,6 +283,101 @@ const usuariosDB = {
     if (updErr) throw updErr;
     return { ok: true, usuarioId: data.id };
   },
+  setResetToken: async ({ id, token, expiraEn }) => {
+    const payload = {
+      reset_token: token,
+      reset_token_expira: expiraEn || null,
+      reset_solicitado_en: new Date().toISOString()
+    };
+    const { error } = await supabase.from('usuarios').update(payload).eq('id', id);
+    if (!error) return { changes: 1 };
+
+    // Compat: si no existe reset_* todavía, usar confirm_token como fallback (solo para usuarios confirmados)
+    const msg = String(error?.message || '').toLowerCase();
+    const isColumnProblem = msg.includes('column') || msg.includes('does not exist') || msg.includes('unknown');
+    if (!isColumnProblem) throw error;
+
+    const { error: fbErr } = await supabase
+      .from('usuarios')
+      .update({
+        confirm_token: token,
+        confirm_token_expira: expiraEn || null
+      })
+      .eq('id', id);
+
+    if (fbErr) throw fbErr;
+    return { changes: 1, fallback: 'confirm_token' };
+  },
+  resetPasswordByToken: async ({ token, passwordHash }) => {
+    const t = typeof token === 'string' ? token.trim() : '';
+    if (!t || !passwordHash) return { ok: false, reason: 'invalid' };
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, reset_token_expira')
+      .eq('reset_token', t)
+      .limit(1)
+      .maybeSingle();
+
+    if (!error) {
+      if (!data) return { ok: false, reason: 'invalid' };
+
+      if (data.reset_token_expira) {
+        const exp = new Date(data.reset_token_expira);
+        if (!Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+          return { ok: false, reason: 'expired' };
+        }
+      }
+
+      const { error: updErr } = await supabase
+        .from('usuarios')
+        .update({
+          password: passwordHash,
+          reset_token: null,
+          reset_token_expira: null,
+          reset_solicitado_en: null,
+          reset_en: new Date().toISOString()
+        })
+        .eq('id', data.id);
+
+      if (updErr) throw updErr;
+      return { ok: true, usuarioId: data.id };
+    }
+
+    // Compat: si no existe reset_* todavía, usar confirm_token como fallback
+    const msg = String(error?.message || '').toLowerCase();
+    const isColumnProblem = msg.includes('column') || msg.includes('does not exist') || msg.includes('unknown');
+    if (!isColumnProblem) throw error;
+
+    const { data: fbData, error: fbError } = await supabase
+      .from('usuarios')
+      .select('id, confirm_token_expira')
+      .eq('confirm_token', t)
+      .limit(1)
+      .maybeSingle();
+
+    if (fbError) throw fbError;
+    if (!fbData) return { ok: false, reason: 'invalid' };
+
+    if (fbData.confirm_token_expira) {
+      const exp = new Date(fbData.confirm_token_expira);
+      if (!Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+        return { ok: false, reason: 'expired' };
+      }
+    }
+
+    const { error: updErr } = await supabase
+      .from('usuarios')
+      .update({
+        password: passwordHash,
+        confirm_token: null,
+        confirm_token_expira: null
+      })
+      .eq('id', fbData.id);
+
+    if (updErr) throw updErr;
+    return { ok: true, usuarioId: fbData.id, fallback: 'confirm_token' };
+  },
   verifyPassword: async (plainPassword, hashedPassword) => {
     return await bcrypt.compare(plainPassword, hashedPassword);
   }

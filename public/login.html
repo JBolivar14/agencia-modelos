@@ -52,6 +52,12 @@
                 </button>
                 
                 <div id="message" class="message"></div>
+
+                <div style="margin-top: 12px; text-align:center;">
+                    <button type="button" id="btnForgot" class="back-link" style="background:transparent;border:0;cursor:pointer;">
+                        ¿Olvidaste tu contraseña?
+                    </button>
+                </div>
             </form>
 
             <form id="registerForm" style="display:none;">
@@ -82,6 +88,26 @@
 
                 <div id="regMessage" class="message"></div>
             </form>
+
+            <form id="forgotForm" style="display:none;">
+                <div class="form-group">
+                    <label for="forgotEmail">Email</label>
+                    <input type="email" id="forgotEmail" name="forgotEmail" required placeholder="tuemail@ejemplo.com" autocomplete="email">
+                </div>
+
+                <button type="submit" class="btn-submit">
+                    <span id="forgotSubmitText">Enviar link de reseteo</span>
+                    <span id="forgotSubmitLoader" class="loader" style="display: none;"></span>
+                </button>
+
+                <div id="forgotMessage" class="message"></div>
+
+                <div style="margin-top: 12px; text-align:center;">
+                    <button type="button" id="btnForgotBack" class="back-link" style="background:transparent;border:0;cursor:pointer;">
+                        Volver
+                    </button>
+                </div>
+            </form>
             
             <div class="login-footer">
                 <a href="/" class="back-link">← Volver al inicio</a>
@@ -105,24 +131,36 @@
         // Cambiar modo login/registro (sin revelar roles)
         const loginForm = document.getElementById('loginForm');
         const registerForm = document.getElementById('registerForm');
+        const forgotForm = document.getElementById('forgotForm');
         const subtitleText = document.getElementById('subtitleText');
         const btnModeLogin = document.getElementById('btnModeLogin');
         const btnModeRegister = document.getElementById('btnModeRegister');
+        const btnForgot = document.getElementById('btnForgot');
+        const btnForgotBack = document.getElementById('btnForgotBack');
 
         function setMode(mode) {
             if (mode === 'register') {
                 loginForm.style.display = 'none';
                 registerForm.style.display = 'block';
+                forgotForm.style.display = 'none';
                 subtitleText.textContent = 'Completá tus datos y te enviaremos un email para confirmar tu dirección.';
+            } else if (mode === 'forgot') {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'none';
+                forgotForm.style.display = 'block';
+                subtitleText.textContent = 'Te enviaremos un link para restablecer tu contraseña.';
             } else {
                 registerForm.style.display = 'none';
                 loginForm.style.display = 'block';
+                forgotForm.style.display = 'none';
                 subtitleText.textContent = 'Si ya estás registrado, iniciá sesión. Si no, registrate para crear tu cuenta.';
             }
         }
 
         btnModeLogin.addEventListener('click', () => setMode('login'));
         btnModeRegister.addEventListener('click', () => setMode('register'));
+        if (btnForgot) btnForgot.addEventListener('click', () => setMode('forgot'));
+        if (btnForgotBack) btnForgotBack.addEventListener('click', () => setMode('login'));
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -228,6 +266,46 @@
                     document.getElementById('registerForm').reset();
                 } else {
                     messageDiv.textContent = data.message || 'No se pudo enviar tu información';
+                    messageDiv.className = 'message error';
+                }
+            } catch (error) {
+                messageDiv.textContent = 'Error de conexión. Por favor, intenta nuevamente.';
+                messageDiv.className = 'message error';
+            } finally {
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitLoader.style.display = 'none';
+            }
+        });
+
+        document.getElementById('forgotForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.querySelector('#forgotForm .btn-submit');
+            const submitText = document.getElementById('forgotSubmitText');
+            const submitLoader = document.getElementById('forgotSubmitLoader');
+            const messageDiv = document.getElementById('forgotMessage');
+
+            submitBtn.disabled = true;
+            submitText.style.display = 'none';
+            submitLoader.style.display = 'inline-block';
+            messageDiv.textContent = '';
+            messageDiv.className = 'message';
+
+            const payload = { email: document.getElementById('forgotEmail').value };
+            try {
+                const response = await fetch('/api/usuarios/password/forgot', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    messageDiv.textContent = data.message || 'Revisá tu email para restablecer tu contraseña.';
+                    messageDiv.className = 'message success';
+                    document.getElementById('forgotForm').reset();
+                } else {
+                    messageDiv.textContent = data.message || 'No se pudo enviar el link';
                     messageDiv.className = 'message error';
                 }
             } catch (error) {

@@ -23,6 +23,10 @@ function initDatabase() {
           confirm_token_expira DATETIME,
           confirmado_en DATETIME,
           modelo_id INTEGER,
+          reset_token TEXT,
+          reset_token_expira DATETIME,
+          reset_solicitado_en DATETIME,
+          reset_en DATETIME,
           creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -157,11 +161,16 @@ function initDatabase() {
               if (!has('confirm_token_expira')) ops.push(`ALTER TABLE usuarios ADD COLUMN confirm_token_expira DATETIME`);
               if (!has('confirmado_en')) ops.push(`ALTER TABLE usuarios ADD COLUMN confirmado_en DATETIME`);
               if (!has('modelo_id')) ops.push(`ALTER TABLE usuarios ADD COLUMN modelo_id INTEGER`);
+              if (!has('reset_token')) ops.push(`ALTER TABLE usuarios ADD COLUMN reset_token TEXT`);
+              if (!has('reset_token_expira')) ops.push(`ALTER TABLE usuarios ADD COLUMN reset_token_expira DATETIME`);
+              if (!has('reset_solicitado_en')) ops.push(`ALTER TABLE usuarios ADD COLUMN reset_solicitado_en DATETIME`);
+              if (!has('reset_en')) ops.push(`ALTER TABLE usuarios ADD COLUMN reset_en DATETIME`);
 
               const done = () => {
                 ensureRoleIndex();
                 ensureConfirmTokenIndex();
                 ensureModeloIdIndex();
+                db.run(`CREATE INDEX IF NOT EXISTS idx_usuarios_reset_token ON usuarios(reset_token)`);
                 cb();
               };
 
@@ -856,6 +865,70 @@ const usuariosDB = {
                  confirmado_en = CURRENT_TIMESTAMP
              WHERE id = ?`,
             [row.id],
+            function (updErr) {
+              if (updErr) reject(updErr);
+              else resolve({ ok: true, usuarioId: row.id });
+            }
+          );
+        }
+      );
+    });
+  },
+  setResetToken: ({ id, token, expiraEn }) => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE usuarios
+         SET reset_token = ?,
+             reset_token_expira = ?,
+             reset_solicitado_en = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [token, expiraEn || null, id],
+        function (err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes });
+        }
+      );
+    });
+  },
+  resetPasswordByToken: ({ token, passwordHash }) => {
+    return new Promise((resolve, reject) => {
+      const t = typeof token === 'string' ? token.trim() : '';
+      if (!t || !passwordHash) {
+        resolve({ ok: false, reason: 'invalid' });
+        return;
+      }
+
+      db.get(
+        `SELECT id, reset_token_expira
+         FROM usuarios
+         WHERE reset_token = ?
+         LIMIT 1`,
+        [t],
+        (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          if (!row) {
+            resolve({ ok: false, reason: 'invalid' });
+            return;
+          }
+
+          const exp = row.reset_token_expira ? new Date(row.reset_token_expira) : null;
+          if (exp && !Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+            resolve({ ok: false, reason: 'expired' });
+            return;
+          }
+
+          db.run(
+            `UPDATE usuarios
+             SET password = ?,
+                 reset_token = NULL,
+                 reset_token_expira = NULL,
+                 reset_solicitado_en = NULL,
+                 reset_en = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [passwordHash, row.id],
             function (updErr) {
               if (updErr) reject(updErr);
               else resolve({ ok: true, usuarioId: row.id });

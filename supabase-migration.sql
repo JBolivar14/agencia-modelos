@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
   confirm_token_expira TIMESTAMP WITH TIME ZONE,
   confirmado_en TIMESTAMP WITH TIME ZONE,
   modelo_id BIGINT,
+  reset_token TEXT,
+  reset_token_expira TIMESTAMP WITH TIME ZONE,
+  reset_solicitado_en TIMESTAMP WITH TIME ZONE,
+  reset_en TIMESTAMP WITH TIME ZONE,
   creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -85,6 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username);
 CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol);
 CREATE INDEX IF NOT EXISTS idx_usuarios_confirm_token ON usuarios(confirm_token);
 CREATE INDEX IF NOT EXISTS idx_usuarios_modelo_id ON usuarios(modelo_id);
+CREATE INDEX IF NOT EXISTS idx_usuarios_reset_token ON usuarios(reset_token);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_severity ON audit_logs(severity);
