@@ -29,7 +29,7 @@
             <nav role="navigation" aria-label="Navegación principal">
                 <a href="/" class="nav-link active" aria-current="page">Home</a>
                 <a href="/contacto" class="nav-link">Contacto</a>
-                <a href="/login" class="nav-link">Login</a>
+                <a href="/login" class="nav-link" id="navLoginLink">Login</a>
             </nav>
         </div>
     </header>
@@ -142,6 +142,22 @@
     </footer>
 
     <script>
+        // Si hay sesión admin, cambiar "Login" por "Admin Panel"
+        (async function syncNavLogin() {
+            try {
+                const link = document.getElementById('navLoginLink');
+                if (!link) return;
+                const res = await fetch('/api/session');
+                const data = await res.json().catch(() => ({}));
+                if (data && data.authenticated) {
+                    link.textContent = 'Admin Panel';
+                    link.setAttribute('href', '/admin');
+                }
+            } catch (_) {
+                // ignore
+            }
+        })();
+
         // Variables globales
         let todosLosModelos = [];
         let modelosFiltrados = [];

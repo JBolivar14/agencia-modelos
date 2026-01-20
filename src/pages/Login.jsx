@@ -120,7 +120,7 @@ function Login() {
     <div className="login-page">
       <div className="container">
         <div className="card login-card">
-          <h1>🔐 Loguearte</h1>
+          <h1>🔐 Login</h1>
           <p className="subtitle">
             Si ya estás registrado, iniciá sesión. Si no, registrate para crear tu cuenta.
             {mode === 'register' && (

@@ -1,9 +1,32 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import './Layout.css';
 
 function Layout() {
   const location = useLocation();
+  const [isAuthed, setIsAuthed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/session', { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        setIsAuthed(!!data?.authenticated);
+      } catch (_) {
+        if (cancelled) return;
+        setIsAuthed(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
+
+  const adminLinkTo = isAuthed ? '/admin' : '/login';
+  const adminLinkLabel = isAuthed ? 'Admin Panel' : 'Login';
+  const isAdminActive = location.pathname === '/login' || location.pathname.startsWith('/admin');
 
   return (
     <div className="app-layout">
@@ -27,10 +50,10 @@ function Layout() {
               Contacto
             </Link>
             <Link
-              to="/login"
-              className={`nav-link ${location.pathname === '/login' ? 'active' : ''}`}
+              to={adminLinkTo}
+              className={`nav-link ${isAdminActive ? 'active' : ''}`}
             >
-              Login
+              {adminLinkLabel}
             </Link>
           </nav>
         </div>
