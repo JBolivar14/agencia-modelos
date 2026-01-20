@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import './Layout.css';
+import { clearCsrfToken } from '../utils/csrf';
 
 function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [session, setSession] = useState({ authenticated: false, rol: null });
   const [perfilOpen, setPerfilOpen] = useState(false);
 
@@ -34,6 +36,20 @@ function Layout() {
   const adminLinkLabel = isAdmin ? 'Admin Panel' : 'Logueate!';
   const isAdminActive = location.pathname === '/login' || location.pathname.startsWith('/admin');
 
+  const handleLogout = async () => {
+    try {
+      // Esta ruta limpia cookie/sesión y redirige en el backend.
+      await fetch('/api/logout', { credentials: 'include' });
+    } catch (_) {
+      // Si falla igual intentamos dejar el frontend en estado "deslogueado".
+    } finally {
+      clearCsrfToken();
+      setPerfilOpen(false);
+      setSession({ authenticated: false, rol: null });
+      navigate('/login', { replace: true });
+    }
+  };
+
   return (
     <div className="app-layout">
       <header className="header" role="banner">
@@ -56,13 +72,18 @@ function Layout() {
               Contacto
             </Link>
             {isModelo ? (
-              <button
-                type="button"
-                className={`nav-link nav-link-btn ${perfilOpen ? 'active' : ''}`}
-                onClick={() => setPerfilOpen(true)}
-              >
-                Perfil
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={`nav-link nav-link-btn ${perfilOpen ? 'active' : ''}`}
+                  onClick={() => setPerfilOpen(true)}
+                >
+                  Perfil
+                </button>
+                <button type="button" className="nav-link nav-link-btn" onClick={handleLogout}>
+                  Cerrar sesión
+                </button>
+              </>
             ) : (
               <Link
                 to={adminLinkTo}
@@ -86,9 +107,14 @@ function Layout() {
             <p style={{ marginBottom: '1rem' }}>
               Estamos trabajando en esta función.
             </p>
-            <button type="button" className="btn-secondary" onClick={() => setPerfilOpen(false)}>
-              Cerrar
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn-secondary" onClick={() => setPerfilOpen(false)}>
+                Cerrar
+              </button>
+              <button type="button" className="btn-secondary" onClick={handleLogout}>
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
       )}
