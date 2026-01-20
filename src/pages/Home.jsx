@@ -136,99 +136,6 @@ function Home() {
         <p>Descubre nuestro talento y profesionalismo</p>
       </section>
 
-      {/* Búsqueda y Filtros */}
-      <section className="search-filters-section">
-        <div className="search-container">
-          <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Buscar por nombre..."
-              aria-label="Buscar modelos"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button
-                className="clear-search-btn"
-                aria-label="Limpiar búsqueda"
-                onClick={limpiarBusqueda}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-        
-        <div className="filters-container">
-          <div className="filter-group">
-            <label htmlFor="filterCiudad">Ciudad:</label>
-            <select
-              id="filterCiudad"
-              className="filter-select"
-              aria-label="Filtrar por ciudad"
-              value={filterCiudad}
-              onChange={(e) => setFilterCiudad(e.target.value)}
-            >
-              <option value="">Todas las ciudades</option>
-              {ciudades.map(ciudad => (
-                <option key={ciudad} value={ciudad}>{ciudad}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="filter-group">
-            <label htmlFor="filterEdad">Edad:</label>
-            <select
-              id="filterEdad"
-              className="filter-select"
-              aria-label="Filtrar por edad"
-              value={filterEdad}
-              onChange={(e) => setFilterEdad(e.target.value)}
-            >
-              <option value="">Todas las edades</option>
-              <option value="18-25">18-25 años</option>
-              <option value="26-30">26-30 años</option>
-              <option value="31-35">31-35 años</option>
-              <option value="36+">36+ años</option>
-            </select>
-          </div>
-          
-          <div className="filter-group">
-            <label htmlFor="sortBy">Ordenar por:</label>
-            <select
-              id="sortBy"
-              className="filter-select"
-              aria-label="Ordenar modelos"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="nombre">Nombre (A-Z)</option>
-              <option value="nombre-desc">Nombre (Z-A)</option>
-              <option value="fecha">Más recientes</option>
-              <option value="fecha-desc">Más antiguos</option>
-              <option value="edad">Edad (menor a mayor)</option>
-              <option value="edad-desc">Edad (mayor a menor)</option>
-            </select>
-          </div>
-          
-          <button
-            className="btn-reset-filters"
-            aria-label="Restablecer filtros"
-            onClick={resetearFiltros}
-          >
-            🔄 Limpiar Filtros
-          </button>
-        </div>
-        
-        {modelosFiltrados.length < modelos.length && modelosFiltrados.length > 0 && (
-          <div className="results-count">
-            <span>Mostrando {modelosFiltrados.length} de {modelos.length} modelos</span>
-          </div>
-        )}
-      </section>
-
       {/* Grid de Modelos */}
       {loading && (
         <section className="modelos-grid loading-state" aria-live="polite">
@@ -324,6 +231,99 @@ function Home() {
           })}
         </section>
       )}
+
+      {/* Búsqueda y Filtros (al final) */}
+      <section className="search-filters-section">
+        <div className="search-container">
+          <div className="search-input-wrapper">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Buscar por nombre..."
+              aria-label="Buscar modelos"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                className="clear-search-btn"
+                aria-label="Limpiar búsqueda"
+                onClick={limpiarBusqueda}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="filters-container">
+          <div className="filter-group">
+            <label htmlFor="filterCiudad">Ciudad:</label>
+            <select
+              id="filterCiudad"
+              className="filter-select"
+              aria-label="Filtrar por ciudad"
+              value={filterCiudad}
+              onChange={(e) => setFilterCiudad(e.target.value)}
+            >
+              <option value="">Todas las ciudades</option>
+              {ciudades.map(ciudad => (
+                <option key={ciudad} value={ciudad}>{ciudad}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="filterEdad">Edad:</label>
+            <select
+              id="filterEdad"
+              className="filter-select"
+              aria-label="Filtrar por edad"
+              value={filterEdad}
+              onChange={(e) => setFilterEdad(e.target.value)}
+            >
+              <option value="">Todas las edades</option>
+              <option value="18-25">18-25 años</option>
+              <option value="26-30">26-30 años</option>
+              <option value="31-35">31-35 años</option>
+              <option value="36+">36+ años</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label htmlFor="sortBy">Ordenar por:</label>
+            <select
+              id="sortBy"
+              className="filter-select"
+              aria-label="Ordenar modelos"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="nombre">Nombre (A-Z)</option>
+              <option value="nombre-desc">Nombre (Z-A)</option>
+              <option value="fecha">Más recientes</option>
+              <option value="fecha-desc">Más antiguos</option>
+              <option value="edad">Edad (menor a mayor)</option>
+              <option value="edad-desc">Edad (mayor a menor)</option>
+            </select>
+          </div>
+
+          <button
+            className="btn-reset-filters"
+            aria-label="Restablecer filtros"
+            onClick={resetearFiltros}
+          >
+            🔄 Limpiar Filtros
+          </button>
+        </div>
+
+        {modelosFiltrados.length < modelos.length && modelosFiltrados.length > 0 && (
+          <div className="results-count">
+            <span>Mostrando {modelosFiltrados.length} de {modelos.length} modelos</span>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

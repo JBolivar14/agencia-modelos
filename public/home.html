@@ -40,7 +40,23 @@
             <p>Descubre nuestro talento y profesionalismo</p>
         </section>
 
-        <!-- Búsqueda y Filtros -->
+        <section class="modelos-grid" id="modelosGrid" aria-live="polite" aria-label="Galería de modelos">
+            <div class="loading-models" role="status" aria-label="Cargando modelos">
+                <span class="loading"></span>
+                Cargando modelos...
+            </div>
+        </section>
+
+        <div id="noModelos" class="no-modelos" style="display: none;">
+            <p>No hay modelos disponibles en este momento.</p>
+        </div>
+
+        <div id="errorModelos" class="error-container" style="display: none;">
+            <p class="error-message"></p>
+            <button onclick="cargarModelos()" class="btn-retry">Intentar de nuevo</button>
+        </div>
+
+        <!-- Búsqueda y Filtros (al final) -->
         <section class="search-filters-section">
             <div class="search-container">
                 <div class="search-input-wrapper">
@@ -96,22 +112,6 @@
                 <span id="resultsText"></span>
             </div>
         </section>
-
-        <section class="modelos-grid" id="modelosGrid" aria-live="polite" aria-label="Galería de modelos">
-            <div class="loading-models" role="status" aria-label="Cargando modelos">
-                <span class="loading"></span>
-                Cargando modelos...
-            </div>
-        </section>
-
-        <div id="noModelos" class="no-modelos" style="display: none;">
-            <p>No hay modelos disponibles en este momento.</p>
-        </div>
-
-        <div id="errorModelos" class="error-container" style="display: none;">
-            <p class="error-message"></p>
-            <button onclick="cargarModelos()" class="btn-retry">Intentar de nuevo</button>
-        </div>
     </main>
 
     <footer class="footer-modern">
