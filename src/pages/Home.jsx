@@ -134,6 +134,19 @@ function Home() {
       <section className="hero">
         <h2>Nuestras Modelos</h2>
         <p>Descubre nuestro talento y profesionalismo</p>
+        <div className="hero-message" role="note" aria-label="Presentación de la agencia">
+          <p>
+            Somos una agencia de modelos con más de 20 años de trayectoria en el mundo de las actividades artísticas,
+            el diseño y la imagen profesional.
+          </p>
+          <p>
+            A lo largo de nuestra experiencia, hemos acompañado talentos y marcas, construyendo identidad, estilo y
+            proyección en el ámbito artístico y comercial.
+          </p>
+          <p className="hero-cta">
+            Si sos marca o querés sumarte como modelo, contactanos y te acompañamos en el proceso.
+          </p>
+        </div>
       </section>
 
       {/* Grid de Modelos */}
