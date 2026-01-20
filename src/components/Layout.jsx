@@ -4,7 +4,8 @@ import './Layout.css';
 
 function Layout() {
   const location = useLocation();
-  const [isAuthed, setIsAuthed] = useState(false);
+  const [session, setSession] = useState({ authenticated: false, rol: null });
+  const [perfilOpen, setPerfilOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -13,10 +14,13 @@ function Layout() {
         const res = await fetch('/api/session', { credentials: 'include' });
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
-        setIsAuthed(!!data?.authenticated);
+        setSession({
+          authenticated: !!data?.authenticated,
+          rol: data?.user?.rol || (data?.authenticated ? 'admin' : null)
+        });
       } catch (_) {
         if (cancelled) return;
-        setIsAuthed(false);
+        setSession({ authenticated: false, rol: null });
       }
     })();
     return () => {
@@ -24,8 +28,10 @@ function Layout() {
     };
   }, [location.pathname]);
 
-  const adminLinkTo = isAuthed ? '/admin' : '/login';
-  const adminLinkLabel = isAuthed ? 'Admin Panel' : 'Login';
+  const isAdmin = session.authenticated && session.rol === 'admin';
+  const isModelo = session.authenticated && session.rol === 'modelo';
+  const adminLinkTo = isAdmin ? '/admin' : '/login';
+  const adminLinkLabel = isAdmin ? 'Admin Panel' : 'Logueate!';
   const isAdminActive = location.pathname === '/login' || location.pathname.startsWith('/admin');
 
   return (
@@ -41,7 +47,7 @@ function Layout() {
               className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
               aria-current={location.pathname === '/' ? 'page' : undefined}
             >
-              Home
+              Inicio
             </Link>
             <Link
               to="/contacto"
@@ -49,12 +55,22 @@ function Layout() {
             >
               Contacto
             </Link>
-            <Link
-              to={adminLinkTo}
-              className={`nav-link ${isAdminActive ? 'active' : ''}`}
-            >
-              {adminLinkLabel}
-            </Link>
+            {isModelo ? (
+              <button
+                type="button"
+                className={`nav-link nav-link-btn ${perfilOpen ? 'active' : ''}`}
+                onClick={() => setPerfilOpen(true)}
+              >
+                Perfil
+              </button>
+            ) : (
+              <Link
+                to={adminLinkTo}
+                className={`nav-link ${isAdminActive ? 'active' : ''}`}
+              >
+                {adminLinkLabel}
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -62,6 +78,20 @@ function Layout() {
       <main className="main-content">
         <Outlet />
       </main>
+
+      {isModelo && perfilOpen && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setPerfilOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Perfil</h3>
+            <p style={{ marginBottom: '1rem' }}>
+              Estamos trabajando en esta función.
+            </p>
+            <button type="button" className="btn-secondary" onClick={() => setPerfilOpen(false)}>
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
 
       <footer className="footer-modern">
         <div className="footer-container">
@@ -79,7 +109,7 @@ function Layout() {
             </div>
           </div>
           <div className="footer-bottom">
-            <p>&copy; 2025 Agencia Modelos Argentinas. Todos los derechos reservados.</p>
+            <p>&copy; 2026 Agencia Modelos Argentinas. Todos los derechos reservados.</p>
           </div>
         </div>
       </footer>

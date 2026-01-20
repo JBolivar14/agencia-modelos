@@ -9,6 +9,7 @@ function ConfirmarEmail() {
 
   useEffect(() => {
     const token = (searchParams.get('token') || '').trim();
+    const type = (searchParams.get('type') || '').trim().toLowerCase(); // usuario | contacto
     if (!token) {
       setStatus('error');
       setMessage('Token inválido');
@@ -17,7 +18,9 @@ function ConfirmarEmail() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/contacto/confirm?token=${encodeURIComponent(token)}`);
+        const endpoint =
+          type === 'usuario' ? '/api/usuarios/confirm' : '/api/contacto/confirm';
+        const res = await fetch(`${endpoint}?token=${encodeURIComponent(token)}`);
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data?.success) {
           const msg = data?.message || 'No se pudo confirmar el email';
@@ -27,8 +30,8 @@ function ConfirmarEmail() {
           return;
         }
         setStatus('success');
-        setMessage('Email confirmado. ¡Gracias!');
-        toast.success('Email confirmado');
+        setMessage(type === 'usuario' ? 'Cuenta confirmada. ¡Ya podés iniciar sesión!' : 'Email confirmado. ¡Gracias!');
+        toast.success(type === 'usuario' ? 'Cuenta confirmada' : 'Email confirmado');
       } catch (e) {
         setStatus('error');
         setMessage('Error de conexión');

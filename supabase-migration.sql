@@ -5,13 +5,19 @@
 -- Si tu proyecto ya fue migrado, para agregar auditoría usá `supabase-audit-logs.sql`
 -- ============================================
 
--- Tabla de usuarios (administradores)
+-- Tabla de usuarios (admins y modelos)
 CREATE TABLE IF NOT EXISTS usuarios (
   id BIGSERIAL PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE,
   password TEXT NOT NULL,
   nombre TEXT NOT NULL,
+  rol TEXT DEFAULT 'admin',
+  confirmado BOOLEAN DEFAULT false,
+  confirm_token TEXT,
+  confirm_token_expira TIMESTAMP WITH TIME ZONE,
+  confirmado_en TIMESTAMP WITH TIME ZONE,
+  modelo_id BIGINT,
   creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -76,6 +82,9 @@ CREATE INDEX IF NOT EXISTS idx_modelos_activa ON modelos(activa);
 CREATE INDEX IF NOT EXISTS idx_modelo_fotos_modelo_id ON modelo_fotos(modelo_id);
 CREATE INDEX IF NOT EXISTS idx_contactos_fecha ON contactos(fecha);
 CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username);
+CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol);
+CREATE INDEX IF NOT EXISTS idx_usuarios_confirm_token ON usuarios(confirm_token);
+CREATE INDEX IF NOT EXISTS idx_usuarios_modelo_id ON usuarios(modelo_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_severity ON audit_logs(severity);

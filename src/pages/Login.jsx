@@ -11,8 +11,8 @@ function Login() {
   // Registro público (modelo / postulante)
   const [registroNombre, setRegistroNombre] = useState('');
   const [registroEmail, setRegistroEmail] = useState('');
-  const [registroTelefono, setRegistroTelefono] = useState('');
-  const [registroMensaje, setRegistroMensaje] = useState('');
+  const [registroPassword, setRegistroPassword] = useState('');
+  const [registroPassword2, setRegistroPassword2] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -26,7 +26,12 @@ function Login() {
       const response = await fetch('/api/session', { credentials: 'include' });
       const data = await response.json();
       if (data.authenticated) {
-        navigate('/admin', { replace: true });
+        const rol = data?.user?.rol || 'admin';
+        if (rol === 'admin') {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
       }
     } catch (error) {
       console.error('Error verificando autenticación:', error);
@@ -55,10 +60,11 @@ function Login() {
       const data = await response.json();
 
       if (data.success) {
+        const rol = data?.user?.rol || 'admin';
         toast.success('Login exitoso. Redirigiendo...');
         setTimeout(() => {
-          navigate('/admin', { replace: true });
-        }, 1000);
+          navigate(rol === 'admin' ? '/admin' : '/', { replace: true });
+        }, 700);
       } else {
         toast.error(data.message || 'Usuario o contraseña incorrectos');
       }
@@ -79,18 +85,24 @@ function Login() {
     setLoading(true);
 
     try {
+      if (!registroPassword || registroPassword.trim().length < 8) {
+        throw new Error('La contraseña debe tener al menos 8 caracteres');
+      }
+      if (registroPassword !== registroPassword2) {
+        throw new Error('Las contraseñas no coinciden');
+      }
+
       const payload = {
         nombre: registroNombre,
         email: registroEmail,
-        telefono: registroTelefono,
-        empresa: null,
-        mensaje: registroMensaje || 'Registro'
+        password: registroPassword
       };
 
-      const response = await fetch('/api/contacto', {
+      const response = await fetch('/api/usuarios/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -100,11 +112,11 @@ function Login() {
 
       const data = await response.json();
       if (data.success) {
-        toast.success(data.message || '¡Listo! Revisá tu email para confirmar.');
+        toast.success(data.message || '¡Listo! Revisá tu email para confirmar tu cuenta.');
         setRegistroNombre('');
         setRegistroEmail('');
-        setRegistroTelefono('');
-        setRegistroMensaje('');
+        setRegistroPassword('');
+        setRegistroPassword2('');
       } else {
         toast.error(data.message || 'No se pudo enviar tu información');
       }
@@ -120,7 +132,7 @@ function Login() {
     <div className="login-page">
       <div className="container">
         <div className="card login-card">
-          <h1>🔐 Login</h1>
+          <h1>🔐 Logueate!</h1>
           <p className="subtitle">
             Si ya estás registrado, iniciá sesión. Si no, registrate para crear tu cuenta.
             {mode === 'register' && (
@@ -130,7 +142,7 @@ function Login() {
             )}
           </p>
 
-          <div className="login-switch" role="tablist" aria-label="Login o registro">
+          <div className="login-switch" role="tablist" aria-label="Logueate o registro">
             <button
               type="button"
               className={`login-switch-btn ${mode === 'login' ? 'active' : ''}`}
@@ -225,28 +237,31 @@ function Login() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="registroTelefono">Teléfono</label>
+                <label htmlFor="registroPassword">Contraseña</label>
                 <input
-                  type="tel"
-                  id="registroTelefono"
-                  name="registroTelefono"
-                  placeholder="Opcional"
-                  autoComplete="tel"
-                  value={registroTelefono}
-                  onChange={(e) => setRegistroTelefono(e.target.value)}
+                  type="password"
+                  id="registroPassword"
+                  name="registroPassword"
+                  required
+                  placeholder="Mínimo 8 caracteres"
+                  autoComplete="new-password"
+                  value={registroPassword}
+                  onChange={(e) => setRegistroPassword(e.target.value)}
                   disabled={loading}
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="registroMensaje">Mensaje</label>
+                <label htmlFor="registroPassword2">Repetir contraseña</label>
                 <input
-                  type="text"
-                  id="registroMensaje"
-                  name="registroMensaje"
-                  placeholder="Opcional"
-                  value={registroMensaje}
-                  onChange={(e) => setRegistroMensaje(e.target.value)}
+                  type="password"
+                  id="registroPassword2"
+                  name="registroPassword2"
+                  required
+                  placeholder="Repetí tu contraseña"
+                  autoComplete="new-password"
+                  value={registroPassword2}
+                  onChange={(e) => setRegistroPassword2(e.target.value)}
                   disabled={loading}
                 />
               </div>
@@ -255,7 +270,7 @@ function Login() {
                 {loading ? (
                   <>
                     <span className="loader"></span>
-                    Enviando...
+                    Creando cuenta...
                   </>
                 ) : (
                   'Crear mi cuenta'

@@ -39,13 +39,24 @@ async function initDatabase() {
     // Si no hay usuarios, crear admin
     if (!usuarios || usuarios.length === 0) {
       const hashedPassword = await bcrypt.hash('admin123', 10);
-      const { error: insertError } = await supabase
-        .from('usuarios')
-        .insert({
-          username: 'admin',
-          password: hashedPassword,
-          nombre: 'Administrador'
-        });
+      const payloads = [
+        { username: 'admin', password: hashedPassword, nombre: 'Administrador', rol: 'admin', confirmado: true },
+        { username: 'admin', password: hashedPassword, nombre: 'Administrador' }
+      ];
+
+      let insertError = null;
+      for (const p of payloads) {
+        // eslint-disable-next-line no-await-in-loop
+        const { error } = await supabase.from('usuarios').insert(p);
+        if (!error) {
+          insertError = null;
+          break;
+        }
+        insertError = error;
+        const msg = String(error?.message || '').toLowerCase();
+        const isColumnProblem = msg.includes('column') || msg.includes('does not exist') || msg.includes('unknown');
+        if (!isColumnProblem) break;
+      }
 
       if (insertError) {
         console.error('Error creando usuario admin:', insertError);
@@ -95,7 +106,7 @@ const usuariosDB = {
     }
     return data;
   },
-  create: async ({ username, email, passwordHash, nombre }) => {
+  create: async ({ username, email, passwordHash, nombre, rol, confirmado, confirm_token, confirm_token_expira, confirmado_en, modelo_id }) => {
     const payload = {
       username: typeof username === 'string' ? username.trim() : null,
       password: passwordHash,
@@ -106,29 +117,47 @@ const usuariosDB = {
       payload.email = typeof email === 'string' ? email.trim().toLowerCase() : null;
     }
 
-    const { data, error } = await supabase
-      .from('usuarios')
-      .insert(payload)
-      .select('id')
-      .single();
+    if (rol !== undefined) payload.rol = rol;
+    if (confirmado !== undefined) payload.confirmado = !!confirmado;
+    if (confirm_token !== undefined) payload.confirm_token = confirm_token;
+    if (confirm_token_expira !== undefined) payload.confirm_token_expira = confirm_token_expira;
+    if (confirmado_en !== undefined) payload.confirmado_en = confirmado_en;
+    if (modelo_id !== undefined) payload.modelo_id = modelo_id;
 
-    if (error) throw error;
-    return { lastID: data?.id, changes: 1 };
+    const minimal = {
+      username: payload.username,
+      email: payload.email,
+      password: payload.password,
+      nombre: payload.nombre
+    };
+
+    // Intentar insert con columnas nuevas; fallback si aún no existen
+    const tryPayloads = [payload, minimal];
+
+    let lastErr = null;
+    for (const p of tryPayloads) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data, error } = await supabase
+        .from('usuarios')
+        .insert(p)
+        .select('id')
+        .single();
+
+      if (!error) return { lastID: data?.id, changes: 1 };
+      lastErr = error;
+      const msg = String(error?.message || '').toLowerCase();
+      const isColumnProblem = msg.includes('column') || msg.includes('does not exist') || msg.includes('unknown');
+      if (!isColumnProblem) break;
+    }
+
+    throw lastErr;
   },
   getAllAdmin: async () => {
     const candidates = [
+      { fields: 'id, username, email, nombre, rol, creado_en', order: 'creado_en', map: (u) => u },
+      { fields: 'id, username, nombre, rol, creado_en', order: 'creado_en', map: (u) => ({ ...u, email: null }) },
       {
-        fields: 'id, username, email, nombre, creado_en',
-        order: 'creado_en',
-        map: (u) => u
-      },
-      {
-        fields: 'id, username, nombre, creado_en',
-        order: 'creado_en',
-        map: (u) => ({ ...u, email: null })
-      },
-      {
-        fields: 'id, username, email, nombre, created_at',
+        fields: 'id, username, email, nombre, rol, created_at',
         order: 'created_at',
         map: (u) => {
           const { created_at, ...rest } = u || {};
@@ -136,7 +165,7 @@ const usuariosDB = {
         }
       },
       {
-        fields: 'id, username, nombre, created_at',
+        fields: 'id, username, nombre, rol, created_at',
         order: 'created_at',
         map: (u) => {
           const { created_at, ...rest } = u || {};
@@ -146,22 +175,53 @@ const usuariosDB = {
     ];
 
     let lastError = null;
+    // 1) Intentar con filtro rol=admin (si la columna existe)
     for (const c of candidates) {
       // eslint-disable-next-line no-await-in-loop
       const { data, error } = await supabase
         .from('usuarios')
         .select(c.fields)
+        .eq('rol', 'admin')
         .order(c.order, { ascending: false });
 
-      if (!error) {
-        return (data || []).map(c.map);
-      }
+      if (!error) return (data || []).map(c.map);
 
-      // Solo intentar fallback en errores de columnas (migración/schema)
       const msg = String(error?.message || '').toLowerCase();
       const isColumnProblem = msg.includes('column') || msg.includes('does not exist') || msg.includes('unknown');
       lastError = error;
       if (!isColumnProblem) break;
+    }
+
+    // 2) Fallback sin rol (instalaciones viejas) → asumimos que todos son admins
+    const legacyCandidates = [
+      { fields: 'id, username, email, nombre, creado_en', order: 'creado_en', map: (u) => ({ ...u, rol: 'admin' }) },
+      { fields: 'id, username, nombre, creado_en', order: 'creado_en', map: (u) => ({ ...u, email: null, rol: 'admin' }) },
+      {
+        fields: 'id, username, email, nombre, created_at',
+        order: 'created_at',
+        map: (u) => {
+          const { created_at, ...rest } = u || {};
+          return { ...rest, email: rest.email ?? null, rol: 'admin', creado_en: created_at ?? null };
+        }
+      },
+      {
+        fields: 'id, username, nombre, created_at',
+        order: 'created_at',
+        map: (u) => {
+          const { created_at, ...rest } = u || {};
+          return { ...rest, email: null, rol: 'admin', creado_en: created_at ?? null };
+        }
+      }
+    ];
+
+    for (const c of legacyCandidates) {
+      // eslint-disable-next-line no-await-in-loop
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select(c.fields)
+        .order(c.order, { ascending: false });
+      if (!error) return (data || []).map(c.map);
+      lastError = error;
     }
 
     throw lastError;
@@ -179,6 +239,50 @@ const usuariosDB = {
     }
     return data;
   },
+  setConfirmToken: async ({ id, token, expiraEn }) => {
+    const payload = {
+      confirm_token: token,
+      confirm_token_expira: expiraEn || null
+    };
+    const { error } = await supabase.from('usuarios').update(payload).eq('id', id);
+    if (error) throw error;
+    return { changes: 1 };
+  },
+  confirmByToken: async ({ token }) => {
+    const t = typeof token === 'string' ? token.trim() : '';
+    if (!t) return { ok: false, reason: 'invalid' };
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, confirmado, confirm_token_expira')
+      .eq('confirm_token', t)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return { ok: false, reason: 'invalid' };
+    if (data.confirmado === true) return { ok: false, reason: 'already' };
+
+    if (data.confirm_token_expira) {
+      const exp = new Date(data.confirm_token_expira);
+      if (!Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+        return { ok: false, reason: 'expired' };
+      }
+    }
+
+    const { error: updErr } = await supabase
+      .from('usuarios')
+      .update({
+        confirmado: true,
+        confirm_token: null,
+        confirm_token_expira: null,
+        confirmado_en: new Date().toISOString()
+      })
+      .eq('id', data.id);
+
+    if (updErr) throw updErr;
+    return { ok: true, usuarioId: data.id };
+  },
   verifyPassword: async (plainPassword, hashedPassword) => {
     return await bcrypt.compare(plainPassword, hashedPassword);
   }
@@ -195,6 +299,20 @@ const modelosDB = {
 
     if (error) throw error;
     return data || [];
+  },
+  getByEmail: async (email) => {
+    const norm = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!norm) return null;
+
+    const { data, error } = await supabase
+      .from('modelos')
+      .select('*')
+      .eq('email', norm)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
   },
   getAllAdmin: async (options = {}) => {
     const hasOptions =

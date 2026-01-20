@@ -9,7 +9,7 @@ const db = new sqlite3.Database(dbPath);
 function initDatabase() {
   return new Promise((resolve, reject) => {
     db.serialize(() => {
-      // Tabla de usuarios (administradores)
+      // Tabla de usuarios (admins y modelos)
       db.run(`
         CREATE TABLE IF NOT EXISTS usuarios (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,6 +17,12 @@ function initDatabase() {
           email TEXT,
           password TEXT NOT NULL,
           nombre TEXT NOT NULL,
+          rol TEXT DEFAULT 'admin',
+          confirmado INTEGER DEFAULT 0,
+          confirm_token TEXT,
+          confirm_token_expira DATETIME,
+          confirmado_en DATETIME,
+          modelo_id INTEGER,
           creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -129,20 +135,46 @@ function initDatabase() {
             });
           });
 
-          // Migración ligera: agregar email a usuarios si falta (instalaciones viejas)
+          // Migración ligera: agregar columnas nuevas a usuarios (instalaciones viejas)
           db.all(`PRAGMA table_info(usuarios)`, (schemaErr, cols) => {
             if (schemaErr) {
               reject(schemaErr);
               return;
             }
 
-            const hasEmail = Array.isArray(cols) && cols.some((c) => c && c.name === 'email');
+            const has = (name) => Array.isArray(cols) && cols.some((c) => c && c.name === name);
+            const hasEmail = has('email');
             const ensureEmailIndex = (cb) => db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)`, cb);
+            const ensureRoleIndex = () => db.run(`CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol)`);
+            const ensureConfirmTokenIndex = () => db.run(`CREATE INDEX IF NOT EXISTS idx_usuarios_confirm_token ON usuarios(confirm_token)`);
+            const ensureModeloIdIndex = () => db.run(`CREATE INDEX IF NOT EXISTS idx_usuarios_modelo_id ON usuarios(modelo_id)`);
+
+            const ensureNewColumns = (cb) => {
+              const ops = [];
+              if (!has('rol')) ops.push(`ALTER TABLE usuarios ADD COLUMN rol TEXT DEFAULT 'admin'`);
+              if (!has('confirmado')) ops.push(`ALTER TABLE usuarios ADD COLUMN confirmado INTEGER DEFAULT 0`);
+              if (!has('confirm_token')) ops.push(`ALTER TABLE usuarios ADD COLUMN confirm_token TEXT`);
+              if (!has('confirm_token_expira')) ops.push(`ALTER TABLE usuarios ADD COLUMN confirm_token_expira DATETIME`);
+              if (!has('confirmado_en')) ops.push(`ALTER TABLE usuarios ADD COLUMN confirmado_en DATETIME`);
+              if (!has('modelo_id')) ops.push(`ALTER TABLE usuarios ADD COLUMN modelo_id INTEGER`);
+
+              const done = () => {
+                ensureRoleIndex();
+                ensureConfirmTokenIndex();
+                ensureModeloIdIndex();
+                cb();
+              };
+
+              if (ops.length === 0) return done();
+              db.serialize(() => {
+                ops.forEach((sql) => db.run(sql));
+                done();
+              });
+            };
 
             if (hasEmail) {
               ensureEmailIndex(() => {});
-              // Continuar con creación de admin
-              return createDefaultAdmin();
+              return ensureNewColumns(() => createDefaultAdmin());
             }
 
             db.run(`ALTER TABLE usuarios ADD COLUMN email TEXT`, (alterErr) => {
@@ -151,7 +183,7 @@ function initDatabase() {
                 return;
               }
               ensureEmailIndex(() => {});
-              return createDefaultAdmin();
+              return ensureNewColumns(() => createDefaultAdmin());
             });
           });
         
@@ -166,8 +198,8 @@ function initDatabase() {
               if (row.count === 0) {
                 bcrypt.hash('admin123', 10).then(hashedPassword => {
                   db.run(
-                    `INSERT INTO usuarios (username, email, password, nombre) VALUES (?, ?, ?, ?)`,
-                    ['admin', null, hashedPassword, 'Administrador'],
+                    `INSERT INTO usuarios (username, email, password, nombre, rol, confirmado) VALUES (?, ?, ?, ?, ?, ?)`,
+                    ['admin', null, hashedPassword, 'Administrador', 'admin', 1],
                     (err) => {
                       if (err) {
                         reject(err);
@@ -196,6 +228,19 @@ const modelosDB = {
       db.all('SELECT * FROM modelos WHERE activa = 1 ORDER BY creado_en DESC', (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
+      });
+    });
+  },
+  getByEmail: (email) => {
+    return new Promise((resolve, reject) => {
+      const norm = typeof email === 'string' ? email.trim().toLowerCase() : '';
+      if (!norm) {
+        resolve(null);
+        return;
+      }
+      db.get('SELECT * FROM modelos WHERE LOWER(email) = ? LIMIT 1', [norm], (err, row) => {
+        if (err) reject(err);
+        else resolve(row || null);
       });
     });
   },
@@ -726,7 +771,7 @@ const usuariosDB = {
       });
     });
   },
-  create: ({ username, email, passwordHash, nombre }) => {
+  create: ({ username, email, passwordHash, nombre, rol = 'admin', confirmado = 0, modelo_id = null }) => {
     return new Promise((resolve, reject) => {
       const u = typeof username === 'string' ? username.trim() : '';
       const e = typeof email === 'string' ? email.trim().toLowerCase() : null;
@@ -737,8 +782,8 @@ const usuariosDB = {
       }
 
       db.run(
-        `INSERT INTO usuarios (username, email, password, nombre) VALUES (?, ?, ?, ?)`,
-        [u, e || null, passwordHash, n],
+        `INSERT INTO usuarios (username, email, password, nombre, rol, confirmado, modelo_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [u, e || null, passwordHash, n, rol || 'admin', confirmado ? 1 : 0, modelo_id ?? null],
         function (err) {
           if (err) reject(err);
           else resolve({ lastID: this.lastID, changes: this.changes });
@@ -749,10 +794,73 @@ const usuariosDB = {
   getAllAdmin: () => {
     return new Promise((resolve, reject) => {
       db.all(
-        'SELECT id, username, email, nombre, creado_en FROM usuarios ORDER BY creado_en DESC',
+        `SELECT id, username, email, nombre, rol, creado_en
+         FROM usuarios
+         WHERE rol IS NULL OR rol = 'admin'
+         ORDER BY creado_en DESC`,
         (err, rows) => {
           if (err) reject(err);
           else resolve(rows || []);
+        }
+      );
+    });
+  },
+  setConfirmToken: ({ id, token, expiraEn }) => {
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE usuarios SET confirm_token = ?, confirm_token_expira = ? WHERE id = ?`,
+        [token, expiraEn || null, id],
+        function (err) {
+          if (err) reject(err);
+          else resolve({ changes: this.changes });
+        }
+      );
+    });
+  },
+  confirmByToken: ({ token }) => {
+    return new Promise((resolve, reject) => {
+      const t = typeof token === 'string' ? token.trim() : '';
+      if (!t) {
+        resolve({ ok: false, reason: 'invalid' });
+        return;
+      }
+
+      db.get(
+        `SELECT id, confirmado, confirm_token_expira FROM usuarios WHERE confirm_token = ? LIMIT 1`,
+        [t],
+        (err, row) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          if (!row) {
+            resolve({ ok: false, reason: 'invalid' });
+            return;
+          }
+          if (row.confirmado === 1) {
+            resolve({ ok: false, reason: 'already' });
+            return;
+          }
+
+          const exp = row.confirm_token_expira ? new Date(row.confirm_token_expira) : null;
+          if (exp && !Number.isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+            resolve({ ok: false, reason: 'expired' });
+            return;
+          }
+
+          db.run(
+            `UPDATE usuarios
+             SET confirmado = 1,
+                 confirm_token = NULL,
+                 confirm_token_expira = NULL,
+                 confirmado_en = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [row.id],
+            function (updErr) {
+              if (updErr) reject(updErr);
+              else resolve({ ok: true, usuarioId: row.id });
+            }
+          );
         }
       );
     });

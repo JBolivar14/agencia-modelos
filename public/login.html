@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Login a Agencia Modelos Argentinas">
+    <meta name="description" content="Acceso a Agencia Modelos Argentinas">
     <meta name="theme-color" content="#0483B8">
-    <title>Login - Agencia Modelos Argentinas</title>
+    <title>Logueate! - Agencia Modelos Argentinas</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👗</text></svg>">
     <link rel="stylesheet" href="styles.css">
     <script src="utils.js" defer></script>
@@ -13,7 +13,7 @@
 <body>
     <div class="container">
         <div class="card login-card">
-            <h1>🔐 Login</h1>
+            <h1>🔐 Logueate!</h1>
             <p class="subtitle" id="subtitleText">Si ya estás registrado, iniciá sesión. Si no, registrate para crear tu cuenta.</p>
 
             <div class="login-switch" style="display:flex; gap:8px; margin: 16px 0;">
@@ -66,13 +66,13 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="regTelefono">Teléfono</label>
-                    <input type="tel" id="regTelefono" name="regTelefono" placeholder="Opcional" autocomplete="tel">
+                    <label for="regPassword">Contraseña</label>
+                    <input type="password" id="regPassword" name="regPassword" required placeholder="Mínimo 8 caracteres" autocomplete="new-password">
                 </div>
 
                 <div class="form-group">
-                    <label for="regMensaje">Mensaje</label>
-                    <input type="text" id="regMensaje" name="regMensaje" placeholder="Opcional">
+                    <label for="regPassword2">Repetir contraseña</label>
+                    <input type="password" id="regPassword2" name="regPassword2" required placeholder="Repetí tu contraseña" autocomplete="new-password">
                 </div>
 
                 <button type="submit" class="btn-submit">
@@ -95,7 +95,8 @@
             const response = await fetch('/api/session');
             const data = await response.json();
             if (data.authenticated) {
-                window.location.href = '/admin';
+                const rol = data && data.user ? data.user.rol : 'admin';
+                window.location.href = rol === 'admin' ? '/admin' : '/';
             }
         }
 
@@ -157,7 +158,8 @@
                     messageDiv.textContent = 'Login exitoso. Redirigiendo...';
                     messageDiv.className = 'message success';
                     setTimeout(() => {
-                        window.location.href = '/admin';
+                        const rol = data && data.user ? data.user.rol : 'admin';
+                        window.location.href = rol === 'admin' ? '/admin' : '/';
                     }, 1000);
                 } else {
                     messageDiv.textContent = data.message || 'Usuario o contraseña incorrectos';
@@ -187,16 +189,33 @@
             messageDiv.textContent = '';
             messageDiv.className = 'message';
 
+            const pw = document.getElementById('regPassword').value;
+            const pw2 = document.getElementById('regPassword2').value;
+            if (!pw || pw.length < 8) {
+                messageDiv.textContent = 'La contraseña debe tener al menos 8 caracteres';
+                messageDiv.className = 'message error';
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitLoader.style.display = 'none';
+                return;
+            }
+            if (pw !== pw2) {
+                messageDiv.textContent = 'Las contraseñas no coinciden';
+                messageDiv.className = 'message error';
+                submitBtn.disabled = false;
+                submitText.style.display = 'inline';
+                submitLoader.style.display = 'none';
+                return;
+            }
+
             const payload = {
                 nombre: document.getElementById('regNombre').value,
                 email: document.getElementById('regEmail').value,
-                telefono: document.getElementById('regTelefono').value,
-                empresa: null,
-                mensaje: document.getElementById('regMensaje').value || 'Registro'
+                password: pw
             };
 
             try {
-                const response = await fetch('/api/contacto', {
+                const response = await fetch('/api/usuarios/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -204,7 +223,7 @@
 
                 const data = await response.json().catch(() => ({}));
                 if (response.ok && data.success) {
-                    messageDiv.textContent = data.message || '¡Listo! Revisá tu email para confirmar.';
+                    messageDiv.textContent = data.message || '¡Listo! Revisá tu email para confirmar tu cuenta.';
                     messageDiv.className = 'message success';
                     document.getElementById('registerForm').reset();
                 } else {

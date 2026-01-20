@@ -158,7 +158,7 @@ function ModeloDetalle() {
             Intentar de nuevo
           </button>
           <button onClick={() => navigate('/')} className="btn-back">
-            Volver al Home
+            Volver al inicio
           </button>
         </div>
       </div>
@@ -247,7 +247,7 @@ function ModeloDetalle() {
                   onClick={() => navigate('/')}
                   className="btn-back-hero"
                 >
-                  ← Volver al Home
+                  ← Volver al inicio
                 </button>
               </div>
             </div>

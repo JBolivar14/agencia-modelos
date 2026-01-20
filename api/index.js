@@ -149,7 +149,8 @@ function getUserFromAuthCookie(req) {
     return {
       id: payload.userId,
       username: payload.username,
-      nombre: payload.nombre
+      nombre: payload.nombre,
+      rol: payload.rol || 'admin'
     };
   } catch (_) {
     return null;
@@ -326,6 +327,15 @@ const contactoLimiter = rateLimit({
     res.status(429).json({ success: false, message: 'Demasiadas solicitudes. Intenta más tarde.' })
 });
 
+const userRegisterLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) =>
+    res.status(429).json({ success: false, message: 'Demasiados registros. Intenta más tarde.' })
+});
+
 const adminLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   max: 300,
@@ -341,11 +351,18 @@ app.use('/api/admin', adminLimiter);
 function requireAuth(req, res, next) {
   const cookieUser = getUserFromAuthCookie(req);
   if (cookieUser) {
+    if (cookieUser.rol !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Acceso solo para administradores' });
+    }
     req.authUser = cookieUser;
     return next();
   }
 
   if (req.session && req.session.userId) {
+    const rol = req.session.rol || 'admin';
+    if (rol !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Acceso solo para administradores' });
+    }
     return next();
   }
 
@@ -366,6 +383,139 @@ app.get('/api/admin/csrf', requireAuth, (req, res) => {
 
 // Nota: el registro de usuarios admin NO es público.
 // Los admins se crean desde el panel (tab Usuarios) por un admin ya autenticado.
+
+// Registro público: crear usuario modelo (NO admin)
+app.post('/api/usuarios/register', userRegisterLimiter, async (req, res) => {
+  try {
+    const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim() : '';
+    const emailRaw = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    const email = emailRaw.toLowerCase();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!nombre) return res.status(400).json({ success: false, message: 'El nombre es requerido' });
+    if (!emailOk) return res.status(400).json({ success: false, message: 'El email no es válido' });
+    if (!password || password.trim().length < 8) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    if (!usuariosDB || typeof usuariosDB.create !== 'function' || typeof usuariosDB.getByEmail !== 'function') {
+      return res.status(500).json({ success: false, message: 'Registro no disponible' });
+    }
+
+    const existing = await usuariosDB.getByEmail(email);
+    if (existing) {
+      const rol = existing.rol || 'admin';
+      if (rol === 'admin') {
+        return res.status(409).json({ success: false, message: 'Este email ya pertenece a un administrador' });
+      }
+      if (existing.confirmado) {
+        return res.status(409).json({ success: false, message: 'Este email ya está registrado. Iniciá sesión.' });
+      }
+    }
+
+    // Preparación para "claim": si ya existe un modelo con este email, linkearlo al usuario
+    let modeloId = null;
+    if (modelosDB && typeof modelosDB.getByEmail === 'function') {
+      try {
+        const modelo = await modelosDB.getByEmail(email);
+        modeloId = modelo?.id ?? null;
+      } catch (_) {
+        modeloId = null;
+      }
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h
+
+    const baseUrl = getBaseUrl(req);
+    const confirmPageUrl = baseUrl ? `${baseUrl}/confirmar?type=usuario&token=${encodeURIComponent(token)}` : '';
+    const emailCfg = getEmailConfig();
+
+    if (existing && existing.id) {
+      if (typeof usuariosDB.setConfirmToken === 'function') {
+        await usuariosDB.setConfirmToken({ id: existing.id, token, expiraEn: expiresAt });
+      }
+    } else {
+      const passwordHash = await bcrypt.hash(password.trim(), 10);
+      const username = email;
+      const result = await usuariosDB.create({
+        username,
+        email,
+        nombre,
+        passwordHash,
+        rol: 'modelo',
+        confirmado: false,
+        modelo_id: modeloId,
+        confirm_token: token,
+        confirm_token_expira: expiresAt
+      });
+      if (result?.lastID && typeof usuariosDB.setConfirmToken === 'function') {
+        await usuariosDB.setConfirmToken({ id: result.lastID, token, expiraEn: expiresAt });
+      }
+    }
+
+    let emailSent = false;
+    if (confirmPageUrl) {
+      const r = await sendEmail({
+        to: email,
+        subject: 'Confirmá tu cuenta - Agencia Modelos Argentinas',
+        text:
+          `Hola ${nombre},\n\n` +
+          `Para confirmar tu cuenta, ingresá acá:\n${confirmPageUrl}\n\n` +
+          `Este link vence en 24 horas.\n`,
+        html:
+          `<p>Hola <strong>${String(nombre)}</strong>,</p>` +
+          `<p>Para confirmar tu cuenta, hacé clic acá:</p>` +
+          `<p><a href="${confirmPageUrl}">Confirmar mi cuenta</a></p>` +
+          `<p>Este link vence en 24 horas.</p>`
+      });
+      emailSent = !!r?.ok;
+    }
+
+    auditLogSafe(req, { event_type: 'modelo_register', severity: 'info', meta: { emailDomain: email.split('@').pop() || null, emailSent, emailCfgOk: !!emailCfg?.ok } });
+
+    return res.json({
+      success: true,
+      message: emailSent
+        ? '¡Listo! Te enviamos un email para confirmar tu cuenta.'
+        : 'Tu cuenta fue creada, pero no pudimos enviarte el email de confirmación. Por favor contactanos.'
+    });
+  } catch (error) {
+    console.error('Error en registro de modelo:', error);
+    return res.status(500).json({ success: false, message: 'Error registrando usuario. Intentá más tarde.' });
+  }
+});
+
+// Confirmación pública: usuarios modelo
+app.get('/api/usuarios/confirm', async (req, res) => {
+  try {
+    const token = typeof req.query?.token === 'string' ? req.query.token : '';
+    if (!token || !token.trim()) {
+      return res.status(400).json({ success: false, message: 'Token inválido' });
+    }
+
+    if (!usuariosDB || typeof usuariosDB.confirmByToken !== 'function') {
+      return res.status(500).json({ success: false, message: 'Confirmación no disponible' });
+    }
+
+    const result = await usuariosDB.confirmByToken({ token });
+    if (!result?.ok) {
+      const reason = result?.reason || 'invalid';
+      const msg =
+        reason === 'expired'
+          ? 'El link de confirmación expiró'
+          : 'Token inválido o ya confirmado';
+      return res.status(400).json({ success: false, message: msg, reason });
+    }
+
+    auditLogSafe(req, { event_type: 'modelo_confirm_success', severity: 'info', meta: { usuarioId: result.usuarioId } });
+    return res.json({ success: true, message: 'Cuenta confirmada' });
+  } catch (error) {
+    console.error('Error confirmando usuario:', error);
+    return res.status(500).json({ success: false, message: 'Error confirmando cuenta' });
+  }
+});
 
 // Admin users (usuarios)
 app.get('/api/admin/usuarios', requireAuth, async (req, res) => {
@@ -427,7 +577,7 @@ app.post('/api/admin/usuarios', requireAuth, requireCsrf, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password.trim(), 10);
-    const result = await usuariosDB.create({ username, email, nombre, passwordHash });
+    const result = await usuariosDB.create({ username, email, nombre, passwordHash, rol: 'admin', confirmado: true });
 
     auditLogSafe(req, {
       event_type: 'admin_user_create',
@@ -487,13 +637,19 @@ app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
       });
     }
     
+    const rol = user.rol || 'admin';
+    if (rol === 'modelo' && user.confirmado !== 1 && user.confirmado !== true) {
+      return res.status(403).json({ success: false, message: 'Tenés que confirmar tu email antes de iniciar sesión.' });
+    }
+
     req.session.userId = user.id;
     req.session.username = user.username;
     req.session.nombre = user.nombre;
+    req.session.rol = rol;
 
     // Cookie firmada (stateless) para que funcione en serverless sin store compartido
     const token = jwt.sign(
-      { userId: user.id, username: user.username, nombre: user.nombre },
+      { userId: user.id, username: user.username, nombre: user.nombre, rol },
       SESSION_SECRET,
       { expiresIn: '24h' }
     );
@@ -511,7 +667,7 @@ app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
       res.json({ 
         success: true, 
         message: 'Login exitoso',
-        user: { id: user.id, username: user.username, nombre: user.nombre, email: user.email || null }
+        user: { id: user.id, username: user.username, nombre: user.nombre, email: user.email || null, rol }
       });
     });
   } catch (error) {
@@ -539,7 +695,8 @@ app.get('/api/session', (req, res) => {
       user: {
         id: req.session.userId,
         username: req.session.username,
-        nombre: req.session.nombre
+        nombre: req.session.nombre,
+        rol: req.session.rol || 'admin'
       }
     });
   } else {
@@ -976,9 +1133,16 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
     const confirmPageUrl = baseUrl ? `${baseUrl}/confirmar?token=${encodeURIComponent(token)}` : '';
     const emailCfg = getEmailConfig();
 
+    let emailResult = null;
+    let emailSent = false;
+    let emailSkipped = false;
+    let emailReason = null;
+
     try {
-      if (confirmPageUrl) {
-        await sendEmail({
+      if (!confirmPageUrl) {
+        emailReason = 'missing_base_url';
+      } else {
+        emailResult = await sendEmail({
           to: email,
           subject: 'Confirmá tu email - Agencia Modelos Argentinas',
           text:
@@ -991,21 +1155,44 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
             `<p><a href="${confirmPageUrl}">Confirmar mi email</a></p>` +
             `<p>Este link vence en 24 horas.</p>`
         });
+        emailSent = !!emailResult?.ok;
+        emailSkipped = !!emailResult?.skipped;
+        if (emailSkipped && emailResult?.error === 'missing_config') {
+          emailReason = 'missing_smtp_config';
+        }
+        if (!emailSent && !emailSkipped && emailResult?.error) {
+          emailReason = 'smtp_send_failed';
+        }
       }
     } catch (mailErr) {
+      emailReason = 'smtp_send_threw';
       console.error('Error enviando email de confirmación:', mailErr);
     }
     
     res.json({ 
       success: true, 
-      message: emailCfg?.ok
+      message: emailSent
         ? '¡Gracias! Te enviamos un email para confirmar tu dirección.'
-        : '¡Gracias! Tu información ha sido recibida.',
+        : '¡Gracias! Recibimos tu solicitud, pero no pudimos enviarte el email de confirmación. Por favor contactanos desde la sección Contacto.',
       contacto
     });
 
     const emailDomain = typeof email === 'string' && email.includes('@') ? email.split('@').pop() : null;
-    auditLogSafe(req, { event_type: 'contact_submit', severity: 'info', meta: { contactoId: contacto?.id, emailDomain, confirmado: false } });
+    auditLogSafe(req, { event_type: 'contact_submit', severity: 'info', meta: { contactoId: contacto?.id, emailDomain, confirmado: false, emailSent, emailSkipped, emailReason } });
+    if (!emailSent) {
+      auditLogSafe(req, {
+        event_type: 'contact_email_send_failed',
+        severity: 'warn',
+        meta: {
+          contactoId: contacto?.id,
+          emailDomain,
+          emailCfgOk: !!emailCfg?.ok,
+          emailMissing: Array.isArray(emailCfg?.missing) ? emailCfg.missing : null,
+          emailReason,
+          smtpCode: emailResult?.code || null
+        }
+      });
+    }
   } catch (error) {
     console.error('Error guardando contacto:', error);
     res.status(500).json({ 

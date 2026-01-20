@@ -5,7 +5,7 @@ async function checkAuth() {
     try {
         const response = await fetch('/api/session');
         const data = await response.json();
-        if (!data.authenticated) {
+        if (!data.authenticated || !data.user || data.user.rol !== 'admin') {
             window.location.href = '/login';
             return;
         }

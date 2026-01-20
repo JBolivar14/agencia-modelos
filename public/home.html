@@ -27,9 +27,9 @@
         <div class="container">
             <h1 class="logo" aria-label="Agencia Modelos Argentinas">Agencia Modelos Argentinas</h1>
             <nav role="navigation" aria-label="Navegación principal">
-                <a href="/" class="nav-link active" aria-current="page">Home</a>
+                <a href="/" class="nav-link active" aria-current="page">Inicio</a>
                 <a href="/contacto" class="nav-link">Contacto</a>
-                <a href="/login" class="nav-link" id="navLoginLink">Login</a>
+                <a href="/login" class="nav-link" id="navLoginLink">Logueate!</a>
             </nav>
         </div>
     </header>
@@ -124,9 +124,9 @@
                 <div class="footer-links">
                     <div class="footer-section">
                         <h4 class="footer-title">Navegación</h4>
-                        <a href="/" class="footer-link">Home</a>
+                        <a href="/" class="footer-link">Inicio</a>
                         <a href="/contacto" class="footer-link">Contacto</a>
-                        <a href="/login" class="footer-link">Login</a>
+                        <a href="/login" class="footer-link">Logueate!</a>
                     </div>
                     <div class="footer-section">
                         <h4 class="footer-title">Información</h4>
@@ -136,20 +136,20 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 Agencia Modelos Argentinas. Todos los derechos reservados.</p>
+                <p>&copy; 2026 Agencia Modelos Argentinas. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
 
     <script>
-        // Si hay sesión admin, cambiar "Login" por "Admin Panel"
+        // Si hay sesión admin, cambiar "Logueate!" por "Admin Panel"
         (async function syncNavLogin() {
             try {
                 const link = document.getElementById('navLoginLink');
                 if (!link) return;
                 const res = await fetch('/api/session');
                 const data = await res.json().catch(() => ({}));
-                if (data && data.authenticated) {
+                if (data && data.authenticated && data.user && data.user.rol === 'admin') {
                     link.textContent = 'Admin Panel';
                     link.setAttribute('href', '/admin');
                 }

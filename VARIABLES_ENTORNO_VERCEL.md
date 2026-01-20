@@ -66,13 +66,13 @@ Para cada variable:
 | `SESSION_SECRET` | `tu-secret-aleatorio` | 🟡 Recomendada | Secret para sesiones |
 | `NODE_ENV` | `production` | 🟡 Recomendada | Entorno de producción |
 | `PORT` | `3000` | 🟢 Opcional | Puerto (Vercel lo asigna automáticamente) |
-| `APP_BASE_URL` | `https://modelosargentinas.com` | 🟢 Opcional | Base URL para links (confirmación email) |
-| `EMAIL_FROM` | `Agencia <no-reply@tu-dominio.com>` | 🟢 Opcional | Remitente del email (confirmaciones) |
-| `SMTP_HOST` | `smtp.tu-proveedor.com` | 🟢 Opcional | Host SMTP |
-| `SMTP_PORT` | `587` | 🟢 Opcional | Puerto SMTP |
-| `SMTP_USER` | `usuario-smtp` | 🟢 Opcional | Usuario SMTP |
-| `SMTP_PASS` | `password-smtp` | 🟢 Opcional | Password SMTP |
-| `SMTP_SECURE` | `false` | 🟢 Opcional | `true` si usas 465 (SSL) |
+| `APP_BASE_URL` | `https://modelosargentinas.com` | 🟡 Recomendada | Base URL para links (confirmación email) |
+| `EMAIL_FROM` | `Agencia <no-reply@tu-dominio.com>` | 🟡 Recomendada | Remitente del email (confirmaciones) |
+| `SMTP_HOST` | `smtp.tu-proveedor.com` | 🟡 Recomendada | Host SMTP (necesario para confirmaciones) |
+| `SMTP_PORT` | `587` | 🟡 Recomendada | Puerto SMTP |
+| `SMTP_USER` | `usuario-smtp` | 🟡 Recomendada | Usuario SMTP |
+| `SMTP_PASS` | `password-smtp` | 🟡 Recomendada | Password SMTP |
+| `SMTP_SECURE` | `false` | 🟡 Recomendada | `true` si usas 465 (SSL) |
 
 ---
 
