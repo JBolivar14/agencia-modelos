@@ -4,6 +4,8 @@ import { toast } from '../utils/toast';
 import { csrfFetch } from '../utils/csrf';
 import './FormularioModelo.css';
 
+const MAX_FOTOS_MODELO = 20;
+
 function FormularioModelo() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -92,10 +94,13 @@ function FormularioModelo() {
   };
 
   const agregarFoto = () => {
-    if (nuevaFoto.trim()) {
-      setFotos(prev => [...prev, nuevaFoto.trim()]);
-      setNuevaFoto('');
+    if (!nuevaFoto.trim()) return;
+    if (fotos.length >= MAX_FOTOS_MODELO) {
+      toast.error(`Máximo ${MAX_FOTOS_MODELO} fotos por modelo`);
+      return;
     }
+    setFotos(prev => [...prev, nuevaFoto.trim()]);
+    setNuevaFoto('');
   };
 
   const eliminarFoto = (index) => {
@@ -205,8 +210,17 @@ function FormularioModelo() {
     try {
       const files = Array.from(fileList || []);
       if (files.length === 0) return;
+      if (fotos.length >= MAX_FOTOS_MODELO) {
+        toast.error(`Máximo ${MAX_FOTOS_MODELO} fotos por modelo`);
+        return;
+      }
+      const restante = MAX_FOTOS_MODELO - fotos.length;
+      const toUpload = files.slice(0, restante);
+      if (toUpload.length < files.length) {
+        toast.info(`Solo se subirán ${restante} foto(s) (máximo ${MAX_FOTOS_MODELO} por modelo).`);
+      }
       setUploadingGallery(true);
-      const urls = await uploadFilesToSupabaseStorage(files);
+      const urls = await uploadFilesToSupabaseStorage(toUpload);
       if (urls.length > 0) {
         setFotos((prev) => [...prev, ...urls]);
         setFormData((prev) => {
@@ -465,30 +479,30 @@ function FormularioModelo() {
               <h2>Galería de Fotos</h2>
 
               <div
-                className={`upload-dropzone ${dragGallery ? 'dragover' : ''} ${uploadingGallery || loading ? 'disabled' : ''}`}
+                className={`upload-dropzone ${dragGallery ? 'dragover' : ''} ${uploadingGallery || loading || fotos.length >= MAX_FOTOS_MODELO ? 'disabled' : ''}`}
                 onDragOver={(e) => {
                   e.preventDefault();
-                  if (!uploadingGallery && !loading) setDragGallery(true);
+                  if (!uploadingGallery && !loading && fotos.length < MAX_FOTOS_MODELO) setDragGallery(true);
                 }}
                 onDragLeave={() => setDragGallery(false)}
                 onDrop={(e) => {
                   e.preventDefault();
-                  if (uploadingGallery || loading) return;
+                  if (uploadingGallery || loading || fotos.length >= MAX_FOTOS_MODELO) return;
                   setDragGallery(false);
                   handleUploadGallery(e.dataTransfer.files);
                 }}
               >
                 <div className="upload-dropzone-content">
                   <div className="upload-title">Arrastrá fotos aquí</div>
-                  <div className="upload-subtitle">o seleccioná múltiples archivos</div>
+                  <div className="upload-subtitle">o seleccioná múltiples archivos (máx. {MAX_FOTOS_MODELO})</div>
                   <label className="btn-upload">
-                    {uploadingGallery ? 'Subiendo...' : 'Seleccionar fotos'}
+                    {uploadingGallery ? 'Subiendo...' : fotos.length >= MAX_FOTOS_MODELO ? 'Máximo alcanzado' : 'Seleccionar fotos'}
                     <input
                       type="file"
                       accept="image/*"
                       multiple
                       onChange={(e) => handleUploadGallery(e.target.files)}
-                      disabled={uploadingGallery || loading}
+                      disabled={uploadingGallery || loading || fotos.length >= MAX_FOTOS_MODELO}
                     />
                   </label>
                 </div>
@@ -507,7 +521,7 @@ function FormularioModelo() {
                   type="button"
                   onClick={agregarFoto}
                   className="btn-add-foto"
-                  disabled={loading || !nuevaFoto.trim()}
+                  disabled={loading || !nuevaFoto.trim() || fotos.length >= MAX_FOTOS_MODELO}
                 >
                   ➕ Agregar
                 </button>

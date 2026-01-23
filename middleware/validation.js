@@ -113,11 +113,13 @@ function validateContacto(req, res, next) {
   next();
 }
 
+const MAX_FOTOS_MODELO = 20;
+
 /**
  * Middleware para validar datos de modelo
  */
 function validateModelo(req, res, next) {
-  const { nombre, email, telefono, edad, foto } = req.body;
+  const { nombre, email, telefono, edad, foto, fotos } = req.body;
   
   // Validar nombre (requerido)
   if (!nombre || !nombre.trim()) {
@@ -166,7 +168,32 @@ function validateModelo(req, res, next) {
       message: 'La URL de la foto no es válida'
     });
   }
-  
+
+  // Validar array de fotos: máximo MAX_FOTOS_MODELO
+  if (fotos !== undefined && fotos !== null) {
+    if (!Array.isArray(fotos)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El campo fotos debe ser un array'
+      });
+    }
+    if (fotos.length > MAX_FOTOS_MODELO) {
+      return res.status(400).json({
+        success: false,
+        message: `Máximo ${MAX_FOTOS_MODELO} fotos por modelo`
+      });
+    }
+    const fotosValidas = fotos.filter((u) => u && typeof u === 'string' && u.trim());
+    for (const url of fotosValidas) {
+      if (!validateURL(url.trim())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Una o más URLs de fotos no son válidas'
+        });
+      }
+    }
+  }
+
   // Sanitizar datos
   req.body.nombre = sanitizedNombre;
   req.body.apellido = req.body.apellido ? sanitizeString(req.body.apellido, 100) : null;

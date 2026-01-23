@@ -1076,9 +1076,8 @@ app.post('/api/admin/modelos', requireAuth, requireCsrf, validateModelo, async (
     const result = await modelosDB.create(modeloData);
     const modeloId = result.lastID;
     
-    // Si hay fotos, guardarlas
     if (fotos && Array.isArray(fotos) && fotos.length > 0) {
-      const fotosValidas = fotos.filter(foto => foto && foto.trim());
+      const fotosValidas = fotos.filter(foto => foto && foto.trim()).slice(0, 20);
       if (fotosValidas.length > 0) {
         await modeloFotosDB.createMultiple(modeloId, fotosValidas);
       }
@@ -1131,9 +1130,8 @@ app.put('/api/admin/modelos/:id', requireAuth, requireCsrf, validateModelo, asyn
       // Eliminar fotos existentes
       await modeloFotosDB.deleteByModeloId(modeloId);
       
-      // Agregar nuevas fotos
       if (Array.isArray(fotos) && fotos.length > 0) {
-        const fotosValidas = fotos.filter(foto => foto && foto.trim());
+        const fotosValidas = fotos.filter(foto => foto && foto.trim()).slice(0, 20);
         if (fotosValidas.length > 0) {
           await modeloFotosDB.createMultiple(modeloId, fotosValidas);
         }

@@ -6,7 +6,8 @@
     <meta name="description" content="Panel de administración de Agencia Modelos Argentinas">
     <meta name="theme-color" content="#0483B8">
     <title>Panel de Administración - Agencia Modelos Argentinas</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👗</text></svg>">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.svg" />
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="admin-body">
@@ -148,9 +149,9 @@
                                     <button type="button" class="btn-remove-foto" onclick="removeFotoInput(this)" style="display: none;">✕</button>
                                 </div>
                             </div>
-                            <button type="button" onclick="addFotoInput()" class="btn-add-foto">+ Agregar otra foto</button>
+                            <button type="button" id="btnAddFoto" onclick="addFotoInput()" class="btn-add-foto">+ Agregar otra foto</button>
                             <small style="display: block; margin-top: 8px; color: var(--text-secondary);">
-                                Puedes agregar múltiples fotos. La primera será la foto principal.
+                                Puedes agregar hasta 20 fotos. La primera será la foto principal.
                             </small>
                         </div>
                         <div class="form-group">

@@ -492,7 +492,6 @@ function mostrarFormModelo() {
     if (modeloId) modeloId.value = '';
     if (formTitulo) formTitulo.textContent = 'Agregar Nuevo Modelo';
     
-    // Resetear fotos
     const fotosContainer = document.getElementById('fotosContainer');
     if (fotosContainer) {
         fotosContainer.innerHTML = `
@@ -501,8 +500,8 @@ function mostrarFormModelo() {
                 <button type="button" class="btn-remove-foto" onclick="removeFotoInput(this)" style="display: none;">✕</button>
             </div>
         `;
+        updateAddFotoButtonState();
     }
-    
     if (formContainer) {
         formContainer.style.display = 'block';
         formContainer.scrollIntoView({ behavior: 'smooth' });
@@ -517,7 +516,6 @@ function cancelarFormModelo() {
     documentoEditando = null;
     if (modeloForm) modeloForm.reset();
     
-    // Resetear fotos
     const fotosContainer = document.getElementById('fotosContainer');
     if (fotosContainer) {
         fotosContainer.innerHTML = `
@@ -526,55 +524,59 @@ function cancelarFormModelo() {
                 <button type="button" class="btn-remove-foto" onclick="removeFotoInput(this)" style="display: none;">✕</button>
             </div>
         `;
+        updateAddFotoButtonState();
     }
+}
+
+const MAX_FOTOS_MODELO = 20;
+
+function updateAddFotoButtonState() {
+    const fotosContainer = document.getElementById('fotosContainer');
+    const btn = document.getElementById('btnAddFoto');
+    if (!fotosContainer || !btn) return;
+    const count = fotosContainer.querySelectorAll('.foto-input-group').length;
+    btn.disabled = count >= MAX_FOTOS_MODELO;
 }
 
 // Funciones para gestionar múltiples fotos
 function addFotoInput() {
     const fotosContainer = document.getElementById('fotosContainer');
     if (!fotosContainer) return;
-    
+    const count = fotosContainer.querySelectorAll('.foto-input-group').length;
+    if (count >= MAX_FOTOS_MODELO) {
+        if (window.toast) toast.error(`Máximo ${MAX_FOTOS_MODELO} fotos por modelo`);
+        else alert(`Máximo ${MAX_FOTOS_MODELO} fotos por modelo`);
+        return;
+    }
     const newInput = document.createElement('div');
     newInput.className = 'foto-input-group';
     newInput.innerHTML = `
         <input type="url" class="foto-url-input" placeholder="https://ejemplo.com/foto.jpg">
         <button type="button" class="btn-remove-foto" onclick="removeFotoInput(this)">✕</button>
     `;
-    
     fotosContainer.appendChild(newInput);
-    
-    // Mostrar botones de eliminar en todos los inputs
     const removeButtons = fotosContainer.querySelectorAll('.btn-remove-foto');
     removeButtons.forEach(btn => {
         if (removeButtons.length > 1) {
             btn.style.display = 'inline-flex';
         }
     });
-    
-    // Focus en el nuevo input
     const newInputField = newInput.querySelector('.foto-url-input');
-    if (newInputField) {
-        newInputField.focus();
-    }
+    if (newInputField) newInputField.focus();
+    updateAddFotoButtonState();
 }
 
 function removeFotoInput(button) {
     const fotosContainer = document.getElementById('fotosContainer');
     if (!fotosContainer) return;
-    
     const inputGroup = button.closest('.foto-input-group');
-    if (inputGroup) {
-        inputGroup.remove();
-    }
-    
-    // Ocultar botones de eliminar si solo queda uno
+    if (inputGroup) inputGroup.remove();
     const remainingInputs = fotosContainer.querySelectorAll('.foto-input-group');
     if (remainingInputs.length === 1) {
         const removeBtn = remainingInputs[0].querySelector('.btn-remove-foto');
-        if (removeBtn) {
-            removeBtn.style.display = 'none';
-        }
+        if (removeBtn) removeBtn.style.display = 'none';
     }
+    updateAddFotoButtonState();
 }
 
 async function editarModelo(id) {
@@ -624,6 +626,7 @@ async function editarModelo(id) {
                         </div>
                     `;
                 }
+                updateAddFotoButtonState();
             }
             if (formTitulo) formTitulo.textContent = 'Editar Modelo';
             if (formContainer) {
