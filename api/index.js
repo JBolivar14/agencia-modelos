@@ -58,7 +58,7 @@ const app = express();
 app.disable('x-powered-by');
 
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'modelos';
-const MAX_SIGNED_UPLOADS = 10;
+const MAX_SIGNED_UPLOADS = 20;
 const AUTH_COOKIE_NAME = 'adminToken';
 const CSRF_COOKIE_NAME = 'csrfToken';
 
