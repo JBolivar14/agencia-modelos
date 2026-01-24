@@ -63,13 +63,13 @@ function Home() {
   // Filtrar y ordenar modelos
   const modelosFiltrados = useMemo(() => {
     let filtrados = modelos.filter(modelo => {
-      // Filtro por búsqueda
-      if (searchTerm) {
-        const nombreCompleto = `${modelo.nombre || ''} ${modelo.apellido || ''}`.toLowerCase();
-        if (!nombreCompleto.includes(searchTerm.toLowerCase())) {
-          return false;
-        }
-      }
+      // Filtro por búsqueda (desactivado temporalmente)
+      // if (searchTerm) {
+      //   const nombreCompleto = `${modelo.nombre || ''} ${modelo.apellido || ''}`.toLowerCase();
+      //   if (!nombreCompleto.includes(searchTerm.toLowerCase())) {
+      //     return false;
+      //   }
+      // }
       
       // Filtro por ciudad
       if (filterCiudad && modelo.ciudad !== filterCiudad) {
@@ -109,18 +109,18 @@ function Home() {
     });
     
     return filtrados;
-  }, [modelos, searchTerm, filterCiudad, filterEdad, sortBy]);
+  }, [modelos, /* searchTerm, */ filterCiudad, filterEdad, sortBy]);
 
   const resetearFiltros = () => {
-    setSearchTerm('');
+    // setSearchTerm(''); // Buscador desactivado
     setFilterCiudad('');
     setFilterEdad('');
     setSortBy('nombre');
   };
 
-  const limpiarBusqueda = () => {
-    setSearchTerm('');
-  };
+  // const limpiarBusqueda = () => {
+  //   setSearchTerm('');
+  // }; // Buscador desactivado
 
   const escapeHtml = (text) => {
     if (!text) return '';
@@ -247,7 +247,8 @@ function Home() {
 
       {/* Búsqueda y Filtros (al final) */}
       <section className="search-filters-section">
-        <div className="search-container">
+        {/* Buscador desactivado temporalmente */}
+        {/* <div className="search-container">
           <div className="search-input-wrapper">
             <span className="search-icon">🔍</span>
             <input
@@ -268,7 +269,7 @@ function Home() {
               </button>
             )}
           </div>
-        </div>
+        </div> */}
 
         <div className="filters-container">
           <div className="filter-group">

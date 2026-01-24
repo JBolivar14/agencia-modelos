@@ -93,7 +93,8 @@
 
         <!-- Búsqueda y Filtros (al final) -->
         <section class="search-filters-section">
-            <div class="search-container">
+            <!-- Buscador desactivado temporalmente -->
+            <!-- <div class="search-container">
                 <div class="search-input-wrapper">
                     <span class="search-icon">🔍</span>
                     <input 
@@ -105,7 +106,7 @@
                     >
                     <button id="clearSearch" class="clear-search-btn" style="display: none;" aria-label="Limpiar búsqueda">✕</button>
                 </div>
-            </div>
+            </div> -->
             
             <div class="filters-container">
                 <div class="filter-group">
@@ -277,20 +278,20 @@
         
         // Aplicar filtros y mostrar modelos
         function aplicarFiltros() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            // const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim(); // Buscador desactivado
             const ciudad = document.getElementById('filterCiudad').value;
             const edad = document.getElementById('filterEdad').value;
             const sortBy = document.getElementById('sortBy').value;
             
             // Filtrar modelos
             modelosFiltrados = todosLosModelos.filter(modelo => {
-                // Filtro por búsqueda (nombre o apellido)
-                if (searchTerm) {
-                    const nombreCompleto = `${modelo.nombre || ''} ${modelo.apellido || ''}`.toLowerCase();
-                    if (!nombreCompleto.includes(searchTerm)) {
-                        return false;
-                    }
-                }
+                // Filtro por búsqueda (desactivado temporalmente)
+                // if (searchTerm) {
+                //     const nombreCompleto = `${modelo.nombre || ''} ${modelo.apellido || ''}`.toLowerCase();
+                //     if (!nombreCompleto.includes(searchTerm)) {
+                //         return false;
+                //     }
+                // }
                 
                 // Filtro por ciudad
                 if (ciudad && modelo.ciudad !== ciudad) {
@@ -339,7 +340,7 @@
             const noModelos = document.getElementById('noModelos');
             const resultsCount = document.getElementById('resultsCount');
             const resultsText = document.getElementById('resultsText');
-            const clearSearch = document.getElementById('clearSearch');
+            // const clearSearch = document.getElementById('clearSearch'); // Buscador desactivado
             
             if (modelosFiltrados.length === 0) {
                 grid.style.display = 'none';
@@ -390,29 +391,29 @@
                 }
             }
             
-            // Mostrar/ocultar botón de limpiar búsqueda
-            const searchInput = document.getElementById('searchInput');
-            if (searchInput.value.trim()) {
-                clearSearch.style.display = 'flex';
-            } else {
-                clearSearch.style.display = 'none';
-            }
+            // Mostrar/ocultar botón de limpiar búsqueda (desactivado)
+            // const searchInput = document.getElementById('searchInput');
+            // if (searchInput.value.trim()) {
+            //     clearSearch.style.display = 'flex';
+            // } else {
+            //     clearSearch.style.display = 'none';
+            // }
         }
         
-        // Limpiar búsqueda
-        function limpiarBusqueda() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('clearSearch').style.display = 'none';
-            aplicarFiltros();
-        }
+        // Limpiar búsqueda (desactivado)
+        // function limpiarBusqueda() {
+        //     document.getElementById('searchInput').value = '';
+        //     document.getElementById('clearSearch').style.display = 'none';
+        //     aplicarFiltros();
+        // }
         
         // Resetear todos los filtros
         function resetearFiltros() {
-            document.getElementById('searchInput').value = '';
+            // document.getElementById('searchInput').value = ''; // Buscador desactivado
             document.getElementById('filterCiudad').value = '';
             document.getElementById('filterEdad').value = '';
             document.getElementById('sortBy').value = 'nombre';
-            document.getElementById('clearSearch').style.display = 'none';
+            // document.getElementById('clearSearch').style.display = 'none'; // Buscador desactivado
             aplicarFiltros();
         }
 
@@ -425,16 +426,17 @@
         }
 
         // Event listeners
-        document.getElementById('searchInput').addEventListener('input', aplicarFiltros);
-        document.getElementById('searchInput').addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                aplicarFiltros();
-            }
-        });
+        // Buscador desactivado temporalmente
+        // document.getElementById('searchInput').addEventListener('input', aplicarFiltros);
+        // document.getElementById('searchInput').addEventListener('keyup', (e) => {
+        //     if (e.key === 'Enter') {
+        //         aplicarFiltros();
+        //     }
+        // });
         document.getElementById('filterCiudad').addEventListener('change', aplicarFiltros);
         document.getElementById('filterEdad').addEventListener('change', aplicarFiltros);
         document.getElementById('sortBy').addEventListener('change', aplicarFiltros);
-        document.getElementById('clearSearch').addEventListener('click', limpiarBusqueda);
+        // document.getElementById('clearSearch').addEventListener('click', limpiarBusqueda); // Buscador desactivado
         document.getElementById('resetFilters').addEventListener('click', resetearFiltros);
         
         // Cargar modelos al iniciar
