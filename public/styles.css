@@ -1185,6 +1185,29 @@ h1 {
     margin: 0;
 }
 
+.footer-vuelo {
+    margin-bottom: 0.75rem;
+}
+
+.footer-instagram-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 0.9em;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.footer-instagram-link:hover {
+    color: #CB262C;
+    transform: translateY(-2px);
+}
+
+.footer-instagram-icon {
+    flex-shrink: 0;
+}
+
 /* Skeleton loader */
 .skeleton {
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
