@@ -46,6 +46,47 @@
   margin: 0;
 }
 
+.auto-fill-hint {
+  background: linear-gradient(135deg, rgba(203, 38, 44, 0.1) 0%, rgba(6, 63, 144, 0.1) 100%);
+  border: 2px solid #0483B8;
+  border-radius: 10px;
+  padding: 12px 15px;
+  font-size: 0.9em;
+  color: #063F90;
+  text-align: left;
+}
+
+.auto-fill-hint strong {
+  font-weight: 600;
+}
+
+.btn-contacto-selector {
+  width: 100%;
+  background: linear-gradient(135deg, #CB262C 0%, #0483B8 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-contacto-selector:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(4, 131, 184, 0.3);
+}
+
+.btn-contacto-selector:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .form-group {
   margin-bottom: 1.5rem;
 }

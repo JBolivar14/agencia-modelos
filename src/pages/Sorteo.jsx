@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from '../utils/toast';
 import './Contacto.css';
 
@@ -10,6 +10,91 @@ function Sorteo() {
     website: '',
   });
   const [loading, setLoading] = useState(false);
+  const [showContactButton, setShowContactButton] = useState(false);
+  const [showAutoFillHint, setShowAutoFillHint] = useState(false);
+  const nameInputRef = useRef(null);
+  const pickerTriedRef = useRef(false);
+
+  const isMobile = typeof navigator !== 'undefined' &&
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  const vieneDeQR = typeof document !== 'undefined' &&
+    (!document.referrer || document.referrer === '' || (window.location.hostname && document.referrer.includes(window.location.hostname)));
+
+  const llenarDesdeContactos = async () => {
+    if (typeof navigator === 'undefined' || !('contacts' in navigator) || !('ContactsManager' in window)) {
+      toast.error('Tu navegador no permite elegir contactos. Completá los campos manualmente.');
+      return;
+    }
+    try {
+      const props = await navigator.contacts.getProperties();
+      const ok = props.some((p) => ['name', 'email', 'tel'].includes(p));
+      if (!ok) {
+        toast.error('No se puede acceder a contactos en este navegador.');
+        return;
+      }
+      const contacts = await navigator.contacts.select(['name', 'email', 'tel'], { multiple: false });
+      if (contacts && contacts.length > 0) {
+        const c = contacts[0];
+        setFormData((prev) => ({
+          ...prev,
+          nombre: (c.name && c.name[0]) ? c.name[0] : prev.nombre,
+          email: (c.email && c.email[0]) ? c.email[0] : prev.email,
+          telefono: (c.tel && c.tel[0]) ? c.tel[0] : prev.telefono,
+        }));
+        toast.success('Datos cargados desde tu contacto');
+      }
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        console.warn('Contact Picker:', e);
+        toast.error('No se pudo cargar el contacto. Completá los campos manualmente.');
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (pickerTriedRef.current) return;
+    const hasValues = formData.nombre || formData.email || formData.telefono;
+    if (hasValues) return;
+
+    const hasPicker = typeof navigator !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window;
+    if (isMobile) setShowAutoFillHint(true);
+
+    if (hasPicker) {
+      setShowContactButton(true);
+      if (isMobile && vieneDeQR) {
+        pickerTriedRef.current = true;
+        const t = setTimeout(async () => {
+          try {
+            const props = await navigator.contacts.getProperties();
+            const ok = props.some((p) => ['name', 'email', 'tel'].includes(p));
+            if (!ok) return;
+            const contacts = await navigator.contacts.select(['name', 'email', 'tel'], { multiple: false });
+            if (contacts && contacts.length > 0) {
+              const c = contacts[0];
+              setFormData((prev) => ({
+                ...prev,
+                nombre: (c.name && c.name[0]) ? c.name[0] : prev.nombre,
+                email: (c.email && c.email[0]) ? c.email[0] : prev.email,
+                telefono: (c.tel && c.tel[0]) ? c.tel[0] : prev.telefono,
+              }));
+              toast.success('Datos cargados. Revisá y enviá.');
+            }
+          } catch (err) {
+            if (err.name !== 'AbortError') console.warn('Contact Picker auto:', err);
+          }
+        }, 400);
+        return () => clearTimeout(t);
+      }
+    }
+
+    if (isMobile && nameInputRef.current) {
+      const t = setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [isMobile, vieneDeQR]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -56,7 +141,7 @@ function Sorteo() {
     <div className="contacto-page">
       <div className="container">
         <div className="card contact-form">
-          <h1>🎉 Sorteo — Cena en Puerto Madero</h1>
+          <h1>Registrate para participar en el sorteo</h1>
           <p className="subtitle">
             Completá tus datos para participar. Sorteo el <strong>28 de enero</strong>.
           </p>
@@ -69,6 +154,22 @@ function Sorteo() {
               Auspician: <strong>Vuelo Producciones</strong> y <strong>Menjunje TV</strong>.
             </p>
           </div>
+          {showAutoFillHint && isMobile && (
+            <div className="auto-fill-hint" style={{ display: 'block', marginBottom: '1rem' }}>
+              💡 <strong>Tip:</strong> Tocá cualquier campo para que el navegador sugiera tus datos, o usá el botón de abajo.
+            </div>
+          )}
+          {showContactButton && (
+            <button
+              type="button"
+              className="btn-contacto-selector"
+              onClick={llenarDesdeContactos}
+              disabled={loading}
+              style={{ marginBottom: '1rem' }}
+            >
+              📱 Llenar desde mis contactos
+            </button>
+          )}
           <form onSubmit={handleSubmit}>
             <input
               type="text"
@@ -83,13 +184,14 @@ function Sorteo() {
             <div className="form-group">
               <label htmlFor="nombre">Nombre completo *</label>
               <input
+                ref={nameInputRef}
                 type="text"
                 id="nombre"
                 name="nombre"
                 required
                 placeholder="Tu nombre"
                 autoComplete="name"
-                autoFocus
+                autoFocus={!isMobile}
                 value={formData.nombre}
                 onChange={handleChange}
                 disabled={loading}
