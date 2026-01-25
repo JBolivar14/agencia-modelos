@@ -295,6 +295,27 @@ h1 {
     transform: translateY(0);
 }
 
+.btn-download {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    box-shadow: var(--shadow-md);
+}
+.btn-download:hover {
+    background: linear-gradient(135deg, var(--secondary-dark) 0%, var(--primary-dark) 100%);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+.btn-download:active {
+    transform: translateY(0);
+}
+
 .actions {
     margin-top: 30px;
 }

@@ -522,6 +522,36 @@ function Admin() {
     }
   };
 
+  const descargarQR = () => {
+    if (!qrData?.qr) {
+      toast.error('Generá el QR primero');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = qrData.qr;
+    a.download = 'qr-contacto.png';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.success('Descarga iniciada');
+  };
+
+  const descargarQRSorteo = () => {
+    if (!qrDataSorteo?.qr) {
+      toast.error('Generá el QR Sorteo primero');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = qrDataSorteo.qr;
+    a.download = 'qr-sorteo.png';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast.success('Descarga iniciada');
+  };
+
   const compartirWhatsApp = async () => {
     if (!qrData?.url) {
       toast.error('No hay URL para compartir');
@@ -777,6 +807,7 @@ function Admin() {
                 <div className="qr-url-display">
                   <p><strong>URL:</strong> <span>{qrData.url}</span></p>
                   <div className="qr-actions">
+                    <button onClick={descargarQR} className="btn-download" type="button">⬇️ Descargar QR</button>
                     <button onClick={copiarQRUrl} className="btn-copy">📋 Copiar URL</button>
                     <button onClick={compartirWhatsApp} className="btn-share btn-whatsapp">💬 Compartir por WhatsApp</button>
                     <button onClick={compartirQR} className="btn-share">📤 Compartir (Nativo)</button>
@@ -812,6 +843,7 @@ function Admin() {
                 <div className="qr-url-display">
                   <p><strong>URL:</strong> <span>{qrDataSorteo.url}</span></p>
                   <div className="qr-actions">
+                    <button onClick={descargarQRSorteo} className="btn-download" type="button">⬇️ Descargar QR</button>
                     <button onClick={copiarQRUrlSorteo} className="btn-copy">📋 Copiar URL</button>
                     <button onClick={compartirWhatsAppSorteo} className="btn-share btn-whatsapp">💬 Compartir por WhatsApp</button>
                     <button onClick={compartirQRSorteo} className="btn-share">📤 Compartir (Nativo)</button>
@@ -843,9 +875,15 @@ function Admin() {
                   marginBottom: '1rem',
                   alignItems: 'center'
                 }}
+                role="search"
+                aria-label="Filtros de modelos"
               >
+                <label htmlFor="admin-modelo-buscar" className="visually-hidden">
+                  Buscar por nombre, email, teléfono o ciudad
+                </label>
                 <input
-                  type="text"
+                  id="admin-modelo-buscar"
+                  type="search"
                   placeholder="Buscar (nombre, email, teléfono, ciudad...)"
                   value={modeloQuery}
                   onChange={(e) => {
@@ -854,9 +892,14 @@ function Admin() {
                     setSelectedModeloIds(new Set());
                   }}
                   style={{ flex: '1 1 280px' }}
+                  aria-label="Buscar modelos"
                 />
 
+                <label htmlFor="admin-modelo-ciudad" className="visually-hidden">
+                  Filtrar por ciudad
+                </label>
                 <input
+                  id="admin-modelo-ciudad"
                   type="text"
                   placeholder="Filtrar por ciudad"
                   value={modeloCiudad}
@@ -866,28 +909,39 @@ function Admin() {
                     setSelectedModeloIds(new Set());
                   }}
                   style={{ flex: '1 1 180px' }}
+                  aria-label="Filtrar por ciudad"
                 />
 
+                <label htmlFor="admin-modelo-activa" className="visually-hidden">
+                  Estado: todas, activas o inactivas
+                </label>
                 <select
+                  id="admin-modelo-activa"
                   value={modeloActiva}
                   onChange={(e) => {
                     setModeloActiva(e.target.value);
                     setModeloPage(1);
                     setSelectedModeloIds(new Set());
                   }}
+                  aria-label="Estado activa o inactiva"
                 >
                   <option value="all">Todas</option>
                   <option value="true">Activas</option>
                   <option value="false">Inactivas</option>
                 </select>
 
+                <label htmlFor="admin-modelo-orden" className="visually-hidden">
+                  Ordenar por
+                </label>
                 <select
+                  id="admin-modelo-orden"
                   value={modeloSortBy}
                   onChange={(e) => {
                     setModeloSortBy(e.target.value);
                     setModeloPage(1);
                     setSelectedModeloIds(new Set());
                   }}
+                  aria-label="Ordenar por"
                 >
                   <option value="creado_en">Orden: más nuevas</option>
                   <option value="nombre">Orden: nombre</option>
@@ -895,18 +949,26 @@ function Admin() {
                   <option value="edad">Orden: edad</option>
                 </select>
 
-                <select value={modeloSortDir} onChange={(e) => setModeloSortDir(e.target.value)}>
+                <label htmlFor="admin-modelo-direccion" className="visually-hidden">
+                  Dirección de orden
+                </label>
+                <select id="admin-modelo-direccion" value={modeloSortDir} onChange={(e) => setModeloSortDir(e.target.value)} aria-label="Ascendente o descendente">
                   <option value="desc">Desc</option>
                   <option value="asc">Asc</option>
                 </select>
 
+                <label htmlFor="admin-modelo-page-size" className="visually-hidden">
+                  Cantidad por página
+                </label>
                 <select
+                  id="admin-modelo-page-size"
                   value={modeloPageSize}
                   onChange={(e) => {
                     setModeloPageSize(parseInt(e.target.value, 10));
                     setModeloPage(1);
                     setSelectedModeloIds(new Set());
                   }}
+                  aria-label="Cantidad por página"
                 >
                   <option value={10}>10 / pág</option>
                   <option value={20}>20 / pág</option>

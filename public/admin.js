@@ -220,6 +220,21 @@ function mostrarMensaje(mensaje, tipo) {
     }
 }
 
+function descargarQR() {
+    if (!qrImageDataUrlGlobal) {
+        mostrarMensaje('Generá el QR primero', 'error');
+        return;
+    }
+    const a = document.createElement('a');
+    a.href = qrImageDataUrlGlobal;
+    a.download = 'qr-contacto.png';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    mostrarMensaje('Descarga iniciada', 'success');
+}
+
 // Compartir usando Web Share API (nativo en móviles)
 async function compartirQR() {
     const qrUrlText = document.getElementById('qrUrlText');
@@ -476,6 +491,21 @@ async function generarQRSorteo() {
         console.error('Error generando QR Sorteo:', error);
         mostrarMensaje('Error generando QR Sorteo: ' + error.message, 'error');
     }
+}
+
+function descargarQRSorteo() {
+    if (!qrImageSorteoGlobal) {
+        mostrarMensaje('Generá el QR Sorteo primero', 'error');
+        return;
+    }
+    const a = document.createElement('a');
+    a.href = qrImageSorteoGlobal;
+    a.download = 'qr-sorteo.png';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    mostrarMensaje('Descarga iniciada', 'success');
 }
 
 function copiarQRUrlSorteo(event) {

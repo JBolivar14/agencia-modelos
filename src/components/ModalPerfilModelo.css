@@ -156,7 +156,7 @@
   font-size: 1rem;
 }
 
-.perfil-input:focus {
+.perfil-input:focus:not(:focus-visible) {
   outline: none;
   border-color: var(--primary-color, #6366f1);
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);

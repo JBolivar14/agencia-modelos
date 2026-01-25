@@ -1,8 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { csrfFetch } from '../utils/csrf';
 import { toast } from '../utils/toast';
 import './ModalPerfilModelo.css';
+
+function getFocusables(container) {
+  if (!container) return [];
+  const sel = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  return Array.from(container.querySelectorAll(sel)).filter(
+    (el) => !el.disabled && el.offsetParent != null
+  );
+}
 
 const FIELD_LABELS = {
   nombre: 'Nombre',
@@ -24,6 +32,13 @@ export default function ModalPerfilModelo({ open, onClose, onLogout }) {
   const [modelo, setModelo] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +75,39 @@ export default function ModalPerfilModelo({ open, onClose, onLogout }) {
       })
       .finally(() => setLoading(false));
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const focusCard = () => { cardRef.current?.focus(); };
+    const id = requestAnimationFrame(focusCard);
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !cardRef.current) return;
+      let list = getFocusables(cardRef.current);
+      if (list.length === 0 && cardRef.current.tabIndex === -1) list = [cardRef.current];
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -106,7 +154,12 @@ export default function ModalPerfilModelo({ open, onClose, onLogout }) {
       aria-labelledby="perfil-modal-title"
       onClick={onClose}
     >
-      <div className="modal-card modal-perfil" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={cardRef}
+        className="modal-card modal-perfil"
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2 id="perfil-modal-title" className="perfil-title">
           Mi perfil
         </h2>

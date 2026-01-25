@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ModeloDetalle.css';
 
@@ -12,6 +12,8 @@ function ModeloDetalle() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
+  const lightboxCloseRef = useRef(null);
+  const lightboxPrevFocusRef = useRef(null);
 
   useEffect(() => {
     if (id) {
@@ -95,6 +97,7 @@ function ModeloDetalle() {
       alert('No hay fotos disponibles para mostrar');
       return;
     }
+    lightboxPrevFocusRef.current = document.activeElement;
     setLightboxIndex(index >= 0 && index < todasLasFotos.length ? index : 0);
     setLightboxOpen(true);
     setIsZoomed(false);
@@ -105,6 +108,10 @@ function ModeloDetalle() {
     setLightboxOpen(false);
     setIsZoomed(false);
     document.body.style.overflow = '';
+    const prev = lightboxPrevFocusRef.current;
+    if (prev && typeof prev.focus === 'function') {
+      requestAnimationFrame(() => prev.focus());
+    }
   };
 
   const fotoAnterior = () => {
@@ -122,14 +129,43 @@ function ModeloDetalle() {
   };
 
   useEffect(() => {
+    if (!lightboxOpen) return;
+    const focusClose = () => { lightboxCloseRef.current?.focus(); };
+    const id = requestAnimationFrame(focusClose);
+    return () => cancelAnimationFrame(id);
+  }, [lightboxOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (e) => {
-      if (lightboxOpen) {
-        if (e.key === 'Escape') {
-          cerrarLightbox();
-        } else if (e.key === 'ArrowLeft') {
-          fotoAnterior();
-        } else if (e.key === 'ArrowRight') {
-          fotoSiguiente();
+      if (!lightboxOpen) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cerrarLightbox();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        fotoAnterior();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        fotoSiguiente();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const dialog = document.getElementById('lightbox');
+        if (!dialog) return;
+        const btns = [lightboxCloseRef.current, document.getElementById('lightboxPrevBtn'), document.getElementById('lightboxNextBtn')].filter(Boolean);
+        if (btns.length < 2) return;
+        const idx = btns.indexOf(document.activeElement);
+        if (idx < 0) return;
+        if (e.shiftKey && idx === 0) {
+          e.preventDefault();
+          btns[btns.length - 1].focus();
+        } else if (!e.shiftKey && idx === btns.length - 1) {
+          e.preventDefault();
+          btns[0].focus();
         }
       }
     };
@@ -290,6 +326,7 @@ function ModeloDetalle() {
           >
             <div className="lightbox-overlay" id="lightboxOverlay" />
             <button
+              ref={lightboxCloseRef}
               type="button"
               className="lightbox-close"
               id="lightboxCloseBtn"

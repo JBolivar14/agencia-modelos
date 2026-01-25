@@ -94,8 +94,8 @@
   transition: all 0.3s ease;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+.form-group input:focus:not(:focus-visible),
+.form-group textarea:focus:not(:focus-visible) {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
