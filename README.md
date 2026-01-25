@@ -4,8 +4,10 @@ Aplicación web completa desarrollada con **React + Vite** y **Node.js + Express
 
 ## 📚 Documentación Adicional
 
+- **`DOCUMENTACION.md`** - Documentación completa: funcionalidades, rutas, API, base de datos, tests, configuración y estado actual
 - **`VARIABLES_ENTORNO_VERCEL.md`** - Guía completa de variables de entorno para Vercel
 - **`GUIA_TESTING_VERCEL.md`** - Guía paso a paso para testear la aplicación en Vercel
+- **`GUIA_FLUJO_REGISTRO.md`** - Flujos de registro (contacto, modelos, admin)
 - **`scripts/generar-modelos-prueba.js`** - Script Node.js para generar modelos de prueba (ejecutar desde terminal)
 - **`scripts/insertar-modelos-prueba.sql`** - Script SQL para insertar modelos directamente en Supabase SQL Editor
 
