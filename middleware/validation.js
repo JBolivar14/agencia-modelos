@@ -247,6 +247,55 @@ function validateModelo(req, res, next) {
 }
 
 /**
+ * Middleware para validar datos de perfil modelo (edición por el propio modelo).
+ * Solo permite: nombre, apellido, email, telefono, edad, altura, medidas, ciudad, descripcion, foto (URL).
+ */
+function validatePerfilModelo(req, res, next) {
+  const { nombre, apellido, email, telefono, edad, altura, medidas, ciudad, descripcion, foto } = req.body;
+
+  if (!nombre || !nombre.trim()) {
+    return res.status(400).json({ success: false, message: 'El nombre es requerido' });
+  }
+
+  const sanitizedNombre = sanitizeString(nombre, 100);
+  if (!sanitizedNombre) {
+    return res.status(400).json({ success: false, message: 'El nombre no es válido' });
+  }
+
+  if (email && !validateEmail(email)) {
+    return res.status(400).json({ success: false, message: 'El formato del email no es válido' });
+  }
+
+  if (telefono && !validatePhone(telefono)) {
+    return res.status(400).json({ success: false, message: 'El formato del teléfono no es válido' });
+  }
+
+  if (edad !== undefined && edad !== null && !validateAge(edad)) {
+    return res.status(400).json({
+      success: false,
+      message: 'La edad debe ser un número entre 0 y 150'
+    });
+  }
+
+  if (foto && !validateURL(foto)) {
+    return res.status(400).json({ success: false, message: 'La URL de la foto no es válida' });
+  }
+
+  req.body.nombre = sanitizedNombre;
+  req.body.apellido = apellido ? sanitizeString(apellido, 100) : null;
+  req.body.email = email ? email.trim().toLowerCase() : null;
+  req.body.telefono = telefono ? sanitizeString(telefono, 20) : null;
+  req.body.edad = edad != null ? parseInt(edad, 10) : null;
+  req.body.altura = altura ? sanitizeString(altura, 20) : null;
+  req.body.medidas = medidas ? sanitizeString(medidas, 50) : null;
+  req.body.ciudad = ciudad ? sanitizeString(ciudad, 100) : null;
+  req.body.descripcion = descripcion ? sanitizeString(descripcion, 2000) : null;
+  req.body.foto = foto ? sanitizeString(foto, 1000) : null;
+
+  next();
+}
+
+/**
  * Middleware para validar login
  */
 function validateLogin(req, res, next) {
@@ -277,6 +326,7 @@ module.exports = {
   validateContacto,
   validateSorteo,
   validateModelo,
+  validatePerfilModelo,
   validateLogin,
   sanitizeString,
   validateEmail,

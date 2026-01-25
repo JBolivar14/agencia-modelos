@@ -3,7 +3,8 @@ let csrfTokenCache = null;
 export async function getCsrfToken() {
   if (csrfTokenCache) return csrfTokenCache;
 
-  const res = await fetch('/api/admin/csrf', { credentials: 'include' });
+  // /api/csrf: cualquier usuario autenticado (admin o modelo). /api/admin/csrf solo admin.
+  const res = await fetch('/api/csrf', { credentials: 'include' });
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok || !data?.success || !data?.token) {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import './Layout.css';
 import { clearCsrfToken } from '../utils/csrf';
+import ModalPerfilModelo from './ModalPerfilModelo';
 
 function Layout() {
   const location = useLocation();
@@ -68,8 +69,16 @@ function Layout() {
             <Link
               to="/contacto"
               className={`nav-link ${location.pathname === '/contacto' ? 'active' : ''}`}
+              aria-current={location.pathname === '/contacto' ? 'page' : undefined}
             >
               Contacto
+            </Link>
+            <Link
+              to="/sorteo"
+              className={`nav-link ${location.pathname === '/sorteo' ? 'active' : ''}`}
+              aria-current={location.pathname === '/sorteo' ? 'page' : undefined}
+            >
+              Sorteo
             </Link>
             {isModelo ? (
               <>
@@ -100,23 +109,15 @@ function Layout() {
         <Outlet />
       </main>
 
-      {isModelo && perfilOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => setPerfilOpen(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Perfil</h3>
-            <p style={{ marginBottom: '1rem' }}>
-              Estamos trabajando en esta función.
-            </p>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn-secondary" onClick={() => setPerfilOpen(false)}>
-                Cerrar
-              </button>
-              <button type="button" className="btn-secondary" onClick={handleLogout}>
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
+      {isModelo && (
+        <ModalPerfilModelo
+          open={perfilOpen}
+          onClose={() => setPerfilOpen(false)}
+          onLogout={() => {
+            setPerfilOpen(false);
+            handleLogout();
+          }}
+        />
       )}
 
       <footer className="footer-modern">
@@ -131,6 +132,7 @@ function Layout() {
                 <h4>Navegación</h4>
                 <Link to="/">Inicio</Link>
                 <Link to="/contacto">Contacto</Link>
+                <Link to="/sorteo">Sorteo</Link>
               </div>
               <div className="footer-section footer-partners">
                 <h4>Síguenos</h4>

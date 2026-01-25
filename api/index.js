@@ -52,7 +52,7 @@ if (useSupabase) {
   initDatabase = db.initDatabase;
 }
 
-const { validateContacto, validateSorteo, validateModelo, validateLogin } = require('../middleware/validation');
+const { validateContacto, validateSorteo, validateModelo, validatePerfilModelo, validateLogin } = require('../middleware/validation');
 
 const app = express();
 app.disable('x-powered-by');
@@ -146,12 +146,14 @@ function getUserFromAuthCookie(req) {
     if (!token) return null;
     const payload = jwt.verify(token, SESSION_SECRET);
     if (!payload || !payload.userId) return null;
-    return {
+    const u = {
       id: payload.userId,
       username: payload.username,
       nombre: payload.nombre,
       rol: payload.rol || 'admin'
     };
+    if (payload.modeloId != null) u.modeloId = payload.modeloId;
+    return u;
   } catch (_) {
     return null;
   }
@@ -384,8 +386,50 @@ function requireAuth(req, res, next) {
   res.redirect('/login');
 }
 
+function requireAnyAuth(req, res, next) {
+  const cookieUser = getUserFromAuthCookie(req);
+  if (cookieUser) {
+    req.authUser = cookieUser;
+    return next();
+  }
+  if (req.session && req.session.userId) {
+    req.authUser = {
+      id: req.session.userId,
+      username: req.session.username,
+      nombre: req.session.nombre,
+      rol: req.session.rol || 'admin'
+    };
+    if (req.session.modeloId != null) req.authUser.modeloId = req.session.modeloId;
+    return next();
+  }
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ success: false, message: 'No autorizado. Iniciá sesión.' });
+  }
+  res.redirect('/login');
+}
+
+function requireModelo(req, res, next) {
+  const u = req.authUser;
+  if (!u) return res.status(401).json({ success: false, message: 'No autorizado.' });
+  if (u.rol !== 'modelo') {
+    return res.status(403).json({ success: false, message: 'Solo modelos pueden acceder a esta función.' });
+  }
+  const modeloId = u.modeloId != null ? u.modeloId : (req.session && req.session.modeloId);
+  if (!modeloId) {
+    return res.status(403).json({ success: false, message: 'Tu cuenta no está vinculada a un perfil de modelo.' });
+  }
+  req.modeloId = modeloId;
+  return next();
+}
+
 // CSRF token (admin)
 app.get('/api/admin/csrf', requireAuth, (req, res) => {
+  const token = ensureCsrfTokenCookie(req, res);
+  res.json({ success: true, token });
+});
+
+// CSRF token para cualquier autenticado (admin o modelo). Usado por perfil modelo.
+app.get('/api/csrf', requireAnyAuth, (req, res) => {
   const token = ensureCsrfTokenCookie(req, res);
   res.json({ success: true, token });
 });
@@ -764,13 +808,12 @@ app.post('/api/login', loginLimiter, validateLogin, async (req, res) => {
     req.session.username = user.username;
     req.session.nombre = user.nombre;
     req.session.rol = rol;
+    if (rol === 'modelo' && user.modelo_id != null) req.session.modeloId = user.modelo_id;
 
     // Cookie firmada (stateless) para que funcione en serverless sin store compartido
-    const token = jwt.sign(
-      { userId: user.id, username: user.username, nombre: user.nombre, rol },
-      SESSION_SECRET,
-      { expiresIn: '24h' }
-    );
+    const jwtPayload = { userId: user.id, username: user.username, nombre: user.nombre, rol };
+    if (rol === 'modelo' && user.modelo_id != null) jwtPayload.modeloId = user.modelo_id;
+    const token = jwt.sign(jwtPayload, SESSION_SECRET, { expiresIn: '24h' });
 
     res.cookie(AUTH_COOKIE_NAME, token, {
       httpOnly: true,
@@ -808,17 +851,64 @@ app.get('/api/session', (req, res) => {
   }
 
   if (req.session && req.session.userId) {
-    res.json({ 
-      authenticated: true, 
-      user: {
-        id: req.session.userId,
-        username: req.session.username,
-        nombre: req.session.nombre,
-        rol: req.session.rol || 'admin'
-      }
-    });
+    const u = {
+      id: req.session.userId,
+      username: req.session.username,
+      nombre: req.session.nombre,
+      rol: req.session.rol || 'admin'
+    };
+    if (req.session.modeloId != null) u.modeloId = req.session.modeloId;
+    res.json({ authenticated: true, user: u });
   } else {
     res.json({ authenticated: false });
+  }
+});
+
+// API - Perfil modelo (solo rol modelo)
+app.get('/api/perfil-modelo', requireAnyAuth, requireModelo, async (req, res) => {
+  try {
+    const modeloId = req.modeloId;
+    const modelo = await modelosDB.getById(modeloId);
+    if (!modelo) {
+      return res.status(404).json({ success: false, message: 'Perfil de modelo no encontrado.' });
+    }
+    const fotos = (await modeloFotosDB.getByModeloId(modeloId)) || [];
+    modelo.fotos = fotos;
+    if (!modelo.foto && fotos.length > 0) modelo.foto = fotos[0].url;
+    res.json({ success: true, modelo });
+  } catch (err) {
+    console.error('Error GET /api/perfil-modelo:', err);
+    res.status(500).json({ success: false, message: 'Error al obtener tu perfil.' });
+  }
+});
+
+app.patch('/api/perfil-modelo', requireAnyAuth, requireModelo, requireCsrf, validatePerfilModelo, async (req, res) => {
+  try {
+    const modeloId = req.modeloId;
+    const {
+      nombre, apellido, email, telefono, edad, altura, medidas, ciudad, descripcion, foto
+    } = req.body;
+    const data = {
+      nombre: nombre || '',
+      apellido: apellido || null,
+      email: email || null,
+      telefono: telefono || null,
+      edad: edad != null ? edad : null,
+      altura: altura || null,
+      medidas: medidas || null,
+      ciudad: ciudad || null,
+      descripcion: descripcion || null,
+      foto: foto || null
+    };
+    await modelosDB.update(modeloId, data);
+    const modelo = await modelosDB.getById(modeloId);
+    const fotos = (await modeloFotosDB.getByModeloId(modeloId)) || [];
+    modelo.fotos = fotos;
+    if (!modelo.foto && fotos.length > 0) modelo.foto = fotos[0].url;
+    res.json({ success: true, modelo });
+  } catch (err) {
+    console.error('Error PATCH /api/perfil-modelo:', err);
+    res.status(500).json({ success: false, message: 'Error al actualizar tu perfil.' });
   }
 });
 
