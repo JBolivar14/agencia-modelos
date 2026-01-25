@@ -97,7 +97,11 @@ function Contacto() {
           <p className="subtitle">
             Completa el formulario para compartir tu información de contacto
           </p>
-          
+          <div className="contacto-promo">
+            <p className="contacto-promo-title">🎉 ¡Participá por una cena en Puerto Madero!</p>
+            <p className="contacto-promo-text">Al registrarte participás por una <strong>cena para 4 personas</strong> en Puerto Madero. Sorteo el <strong>28 de enero</strong>.</p>
+            <p className="contacto-promo-auspician">Auspician: <strong>Vuelo Producciones</strong> y <strong>Menjunje TV</strong>.</p>
+          </div>
           <form onSubmit={handleSubmit}>
             {/* Honeypot anti-bots (oculto) */}
             <input
@@ -147,7 +151,7 @@ function Contacto() {
                 type="tel"
                 id="telefono"
                 name="telefono"
-                placeholder="+1 234 567 8900"
+                placeholder="+54 11 1234-5678"
                 autoComplete="tel"
                 value={formData.telefono}
                 onChange={handleChange}

@@ -19,6 +19,33 @@
   color: var(--text-primary);
 }
 
+/* Promo sorteo - formulario contacto QR */
+.contacto-promo {
+  background: linear-gradient(135deg, rgba(4, 131, 184, 0.12) 0%, rgba(203, 38, 44, 0.08) 100%);
+  border: 2px solid rgba(4, 131, 184, 0.35);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+.contacto-promo-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 0 0 0.4rem 0;
+}
+.contacto-promo-text {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin: 0 0 0.35rem 0;
+  line-height: 1.4;
+}
+.contacto-promo-auspician {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #555);
+  margin: 0;
+}
+
 .form-group {
   margin-bottom: 1.5rem;
 }
