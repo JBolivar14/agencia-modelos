@@ -196,6 +196,13 @@
   transform: translateY(-2px);
 }
 
+.btn-whatsapp {
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+}
+.btn-whatsapp:hover {
+  background: linear-gradient(135deg, #2ee06b 0%, #159a8c 100%);
+}
+
 .modelos-table-container,
 .contactos-table-container {
   overflow-x: auto;

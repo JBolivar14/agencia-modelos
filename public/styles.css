@@ -1470,6 +1470,14 @@ h1 {
     transform: translateY(0);
 }
 
+.btn-whatsapp {
+    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+    color: white;
+}
+.btn-whatsapp:hover {
+    background: linear-gradient(135deg, #2ee06b 0%, #159a8c 100%);
+}
+
 .btn-share-social {
     background: linear-gradient(135deg, #25D366 0%, #1877F2 50%, #1DA1F2 100%);
     color: white;

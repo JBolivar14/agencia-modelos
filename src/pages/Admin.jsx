@@ -521,6 +521,31 @@ function Admin() {
     }
   };
 
+  const compartirWhatsApp = async () => {
+    if (!qrData?.url) {
+      toast.error('No hay URL para compartir');
+      return;
+    }
+    const shareText = 'Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros: ' + qrData.url;
+    if (qrData.qr && typeof navigator.share === 'function') {
+      try {
+        const res = await fetch(qrData.qr);
+        const blob = await res.blob();
+        const file = new File([blob], 'qr-contacto.png', { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'QR - Agencia Modelos Argentinas', text: shareText });
+          toast.success('¡Compartido por WhatsApp!');
+          return;
+        }
+      } catch (e) {
+        if (e.name !== 'AbortError') console.warn('Share con imagen falló, usando link:', e);
+      }
+    }
+    const text = encodeURIComponent('Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros: ' + qrData.url);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+    toast.success('Abriendo WhatsApp...');
+  };
+
   const toggleActivaModelo = async (id, nextActiva) => {
     const willDeactivate = nextActiva === false;
     const confirmMsg = willDeactivate
@@ -669,6 +694,9 @@ function Admin() {
                   <div className="qr-actions">
                     <button onClick={copiarQRUrl} className="btn-copy">
                       📋 Copiar URL
+                    </button>
+                    <button onClick={compartirWhatsApp} className="btn-share btn-whatsapp">
+                      💬 Compartir por WhatsApp
                     </button>
                     <button onClick={compartirQR} className="btn-share">
                       📤 Compartir (Nativo)

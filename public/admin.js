@@ -61,8 +61,9 @@ function showTab(tabName, clickedElement) {
     }
 }
 
-// Variable global para almacenar la URL del QR
+// Variables globales para el QR
 let qrUrlGlobal = '';
+let qrImageDataUrlGlobal = '';
 
 // Generar QR
 async function generarQR() {
@@ -96,6 +97,7 @@ async function generarQR() {
             });
             
             qrUrlGlobal = data.url;
+            qrImageDataUrlGlobal = data.qr || '';
             const qrUrlText = document.getElementById('qrUrlText');
             const qrUrl = document.getElementById('qrUrl');
             const shareButtons = document.getElementById('shareButtons');
@@ -269,18 +271,39 @@ function getQRUrl() {
     return qrUrlGlobal || (qrUrlText ? qrUrlText.textContent : '');
 }
 
-// Compartir en WhatsApp
-function compartirWhatsApp() {
+// Compartir en WhatsApp (intenta enviar imagen del QR si está disponible, sino comparte el link)
+async function compartirWhatsApp() {
     const url = getQRUrl();
     if (!url) {
         mostrarMensaje('No hay URL para compartir', 'error');
         return;
     }
+    const shareText = 'Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros: ' + url;
+
+    // Intentar compartir imagen del QR por Web Share API (móvil: elegir WhatsApp)
+    if (qrImageDataUrlGlobal && typeof navigator.share === 'function') {
+        try {
+            const res = await fetch(qrImageDataUrlGlobal);
+            const blob = await res.blob();
+            const file = new File([blob], 'qr-contacto.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'QR - Agencia Modelos Argentinas',
+                    text: shareText
+                });
+                if (window.toast) toast.success('¡Compartido por WhatsApp!');
+                return;
+            }
+        } catch (e) {
+            if (e.name !== 'AbortError') console.warn('Share con imagen falló, usando link:', e);
+        }
+    }
+
+    // Fallback: abrir wa.me con el link
     const text = encodeURIComponent('Agencia Modelos Argentinas le gustaría conocerte más. Comparte tus datos con nosotros: ' + url);
     window.open(`https://wa.me/?text=${text}`, '_blank');
-    if (window.toast) {
-        toast.success('Abriendo WhatsApp...');
-    }
+    if (window.toast) toast.success('Abriendo WhatsApp...');
 }
 
 // Compartir en Facebook
