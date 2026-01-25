@@ -64,6 +64,8 @@ function showTab(tabName, clickedElement) {
 // Variables globales para el QR
 let qrUrlGlobal = '';
 let qrImageDataUrlGlobal = '';
+let qrUrlSorteoGlobal = '';
+let qrImageSorteoGlobal = '';
 
 // Generar QR
 async function generarQR() {
@@ -424,6 +426,205 @@ function compartirTelegram() {
     if (window.toast) {
         toast.success('Abriendo Telegram...');
     }
+}
+
+// --- QR Sorteo ---
+function getQRUrlSorteo() {
+    const el = document.getElementById('qrUrlTextSorteo');
+    return qrUrlSorteoGlobal || (el ? el.textContent : '');
+}
+
+async function generarQRSorteo() {
+    try {
+        const response = await fetch('/api/admin/generar-qr-sorteo', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Error generando QR');
+
+        const container = document.getElementById('qrAdminContainerSorteo');
+        if (!container) throw new Error('Contenedor QR Sorteo no encontrado');
+        container.innerHTML = '';
+
+        new QRCode(container, {
+            text: data.url,
+            width: 300,
+            height: 300,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        qrUrlSorteoGlobal = data.url;
+        qrImageSorteoGlobal = data.qr || '';
+        const qrUrlText = document.getElementById('qrUrlTextSorteo');
+        const qrUrl = document.getElementById('qrUrlSorteo');
+        const shareButtons = document.getElementById('shareButtonsSorteo');
+        if (qrUrlText) qrUrlText.textContent = data.url;
+        if (qrUrl) qrUrl.style.display = 'block';
+        if (shareButtons) shareButtons.style.display = 'none';
+
+        const btnNative = document.getElementById('btnShareNativeSorteo');
+        if (btnNative) {
+            btnNative.style.display = navigator.share ? 'inline-block' : 'none';
+        }
+        const btnSocial = document.querySelector('#qrUrlSorteo .btn-share-social');
+        if (btnSocial) btnSocial.style.display = 'inline-block';
+    } catch (error) {
+        console.error('Error generando QR Sorteo:', error);
+        mostrarMensaje('Error generando QR Sorteo: ' + error.message, 'error');
+    }
+}
+
+function copiarQRUrlSorteo(event) {
+    const url = getQRUrlSorteo();
+    if (!url) {
+        mostrarMensaje('No hay URL para copiar', 'error');
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+            const btn = event ? event.target : document.querySelector('#qrUrlSorteo .btn-copy');
+            const orig = btn?.textContent;
+            if (btn) {
+                btn.textContent = '✅ ¡Copiado!';
+                btn.style.background = 'var(--success-color)';
+                btn.style.borderColor = 'var(--success-color)';
+            }
+            mostrarMensaje('URL copiada al portapapeles', 'success');
+            setTimeout(() => {
+                if (btn) {
+                    btn.textContent = orig || '📋 Copiar URL';
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                }
+            }, 2000);
+        }).catch(() => copiarQRUrlFallback(url, event));
+    } else {
+        copiarQRUrlFallback(url, event);
+    }
+}
+
+function mostrarBotonesCompartirSorteo() {
+    const el = document.getElementById('shareButtonsSorteo');
+    if (el) {
+        el.style.display = 'block';
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+async function compartirQRSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) {
+        mostrarMensaje('No hay URL para compartir', 'error');
+        return;
+    }
+    const shareText = '¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01: ';
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'Sorteo - Agencia Modelos Argentinas',
+                text: shareText,
+                url
+            });
+            if (window.toast) toast.success('¡Compartido!');
+        } catch (e) {
+            if (e.name !== 'AbortError') mostrarBotonesCompartirSorteo();
+        }
+    } else {
+        mostrarBotonesCompartirSorteo();
+    }
+}
+
+function compartirEnRedesSorteo() {
+    mostrarBotonesCompartirSorteo();
+}
+
+async function compartirWhatsAppSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) {
+        mostrarMensaje('No hay URL para compartir', 'error');
+        return;
+    }
+    const shareText = '¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01: ' + url;
+    if (qrImageSorteoGlobal && typeof navigator.share === 'function') {
+        try {
+            const res = await fetch(qrImageSorteoGlobal);
+            const blob = await res.blob();
+            const file = new File([blob], 'qr-sorteo.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: 'QR Sorteo - Agencia Modelos Argentinas', text: shareText });
+                if (window.toast) toast.success('¡Compartido por WhatsApp!');
+                return;
+            }
+        } catch (e) {
+            if (e.name !== 'AbortError') console.warn('Share imagen sorteo falló, usando link:', e);
+        }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+    if (window.toast) toast.success('Abriendo WhatsApp...');
+}
+
+function compartirFacebookSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) { mostrarMensaje('No hay URL para compartir', 'error'); return; }
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
+    if (window.toast) toast.success('Abriendo Facebook...');
+}
+
+function compartirTwitterSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) { mostrarMensaje('No hay URL para compartir', 'error'); return; }
+    const text = encodeURIComponent('¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01:');
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
+    if (window.toast) toast.success('Abriendo Twitter...');
+}
+
+function compartirXSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) { mostrarMensaje('No hay URL para compartir', 'error'); return; }
+    const text = encodeURIComponent('¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01:');
+    window.open(`https://x.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
+    if (window.toast) toast.success('Abriendo X...');
+}
+
+function compartirInstagramSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) { mostrarMensaje('No hay URL para compartir', 'error'); return; }
+    const text = encodeURIComponent('¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01: ' + url);
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        window.open(`instagram://share?text=${text}`, '_blank');
+    } else {
+        window.open('https://www.instagram.com/', '_blank');
+    }
+    if (window.toast) toast.info('Copia la URL y compártela en Instagram');
+    if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => {});
+}
+
+function compartirLinkedInSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) { mostrarMensaje('No hay URL para compartir', 'error'); return; }
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
+    if (window.toast) toast.success('Abriendo LinkedIn...');
+}
+
+function compartirEmailSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) { mostrarMensaje('No hay URL para compartir', 'error'); return; }
+    const subject = encodeURIComponent('Sorteo - Cena Puerto Madero - Agencia Modelos Argentinas');
+    const body = encodeURIComponent(`¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01:\n\n${url}`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    if (window.toast) toast.success('Abriendo cliente de email...');
+}
+
+function compartirTelegramSorteo() {
+    const url = getQRUrlSorteo();
+    if (!url) { mostrarMensaje('No hay URL para compartir', 'error'); return; }
+    const text = encodeURIComponent('¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01: ' + url);
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`, '_blank');
+    if (window.toast) toast.success('Abriendo Telegram...');
 }
 
 // Modelos

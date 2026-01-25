@@ -19,6 +19,7 @@ function Admin() {
   });
   const [expandedAuditKey, setExpandedAuditKey] = useState(null);
   const [qrData, setQrData] = useState(null);
+  const [qrDataSorteo, setQrDataSorteo] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Filtros/paginación de modelos
@@ -546,6 +547,84 @@ function Admin() {
     toast.success('Abriendo WhatsApp...');
   };
 
+  const generarQRSorteo = async () => {
+    try {
+      const response = await csrfFetch('/api/admin/generar-qr-sorteo', { method: 'POST' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error HTTP: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.success) {
+        setQrDataSorteo(data);
+        toast.success('QR Sorteo generado');
+      } else {
+        toast.error(data.message || 'Error generando QR Sorteo');
+      }
+    } catch (error) {
+      console.error('Error generando QR Sorteo:', error);
+      toast.error(error.message || 'Error generando QR Sorteo');
+    }
+  };
+
+  const copiarQRUrlSorteo = async () => {
+    if (!qrDataSorteo?.url) {
+      toast.error('No hay URL para copiar');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(qrDataSorteo.url);
+      toast.success('URL copiada al portapapeles');
+    } catch (error) {
+      toast.error('Error al copiar URL');
+    }
+  };
+
+  const compartirQRSorteo = async () => {
+    if (!qrDataSorteo?.url) {
+      toast.error('No hay URL para compartir');
+      return;
+    }
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Sorteo - Agencia Modelos Argentinas',
+          text: '¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01:',
+          url: qrDataSorteo.url,
+        });
+        toast.success('¡Compartido!');
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error(e);
+      }
+    } else {
+      toast.info('Tu navegador no soporta compartir nativo');
+    }
+  };
+
+  const compartirWhatsAppSorteo = async () => {
+    if (!qrDataSorteo?.url) {
+      toast.error('No hay URL para compartir');
+      return;
+    }
+    const shareText = '¡Participá en el sorteo! Cena para 4 en Puerto Madero. Sorteo 28/01: ' + qrDataSorteo.url;
+    if (qrDataSorteo.qr && typeof navigator.share === 'function') {
+      try {
+        const res = await fetch(qrDataSorteo.qr);
+        const blob = await res.blob();
+        const file = new File([blob], 'qr-sorteo.png', { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'QR Sorteo - Agencia Modelos Argentinas', text: shareText });
+          toast.success('¡Compartido por WhatsApp!');
+          return;
+        }
+      } catch (e) {
+        if (e.name !== 'AbortError') console.warn(e);
+      }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+    toast.success('Abriendo WhatsApp...');
+  };
+
   const toggleActivaModelo = async (id, nextActiva) => {
     const willDeactivate = nextActiva === false;
     const confirmMsg = willDeactivate
@@ -670,37 +749,63 @@ function Admin() {
         {/* Tab QR */}
         {activeTab === 'qr' && (
           <div className="tab-content active">
+            {/* QR Contacto */}
             <div className="card">
-              <h2>Generar Código QR</h2>
-              <p className="subtitle">Genera un código QR para compartir con futuras modelos</p>
+              <h2>Generar Código QR — Contacto</h2>
+              <p className="subtitle">Formulario completo para futuras modelos</p>
               
               <div className="qr-admin-wrapper">
                 <div id="qrAdminContainer" className="qr-admin-placeholder">
                   {qrData ? (
                     <img src={qrData.qr} alt="QR Code" style={{ maxWidth: '300px' }} />
                   ) : (
-                    <p>Haz clic en "Generar QR" para crear el código</p>
+                    <p>Haz clic en "Generar QR Contacto" para crear el código</p>
                   )}
                 </div>
               </div>
               
               <button onClick={generarQR} className="btn-primary">
-                Generar QR
+                Generar QR Contacto
               </button>
               
               {qrData && (
                 <div className="qr-url-display">
                   <p><strong>URL:</strong> <span>{qrData.url}</span></p>
                   <div className="qr-actions">
-                    <button onClick={copiarQRUrl} className="btn-copy">
-                      📋 Copiar URL
-                    </button>
-                    <button onClick={compartirWhatsApp} className="btn-share btn-whatsapp">
-                      💬 Compartir por WhatsApp
-                    </button>
-                    <button onClick={compartirQR} className="btn-share">
-                      📤 Compartir (Nativo)
-                    </button>
+                    <button onClick={copiarQRUrl} className="btn-copy">📋 Copiar URL</button>
+                    <button onClick={compartirWhatsApp} className="btn-share btn-whatsapp">💬 Compartir por WhatsApp</button>
+                    <button onClick={compartirQR} className="btn-share">📤 Compartir (Nativo)</button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* QR Sorteo */}
+            <div className="card" style={{ marginTop: '1.5rem' }}>
+              <h2>Generar Código QR — Sorteo</h2>
+              <p className="subtitle">Solo sorteos: nombre, email y teléfono (sin empresa ni mensaje)</p>
+              
+              <div className="qr-admin-wrapper">
+                <div className="qr-admin-placeholder">
+                  {qrDataSorteo ? (
+                    <img src={qrDataSorteo.qr} alt="QR Sorteo" style={{ maxWidth: '300px' }} />
+                  ) : (
+                    <p>Haz clic en "Generar QR Sorteo" para crear el código</p>
+                  )}
+                </div>
+              </div>
+              
+              <button onClick={generarQRSorteo} className="btn-primary">
+                Generar QR Sorteo
+              </button>
+              
+              {qrDataSorteo && (
+                <div className="qr-url-display">
+                  <p><strong>URL:</strong> <span>{qrDataSorteo.url}</span></p>
+                  <div className="qr-actions">
+                    <button onClick={copiarQRUrlSorteo} className="btn-copy">📋 Copiar URL</button>
+                    <button onClick={compartirWhatsAppSorteo} className="btn-share btn-whatsapp">💬 Compartir por WhatsApp</button>
+                    <button onClick={compartirQRSorteo} className="btn-share">📤 Compartir (Nativo)</button>
                   </div>
                 </div>
               )}

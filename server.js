@@ -49,7 +49,7 @@ if (useSupabase) {
   initDatabase = db.initDatabase;
 }
 
-const { validateContacto, validateModelo, validateLogin } = require('./middleware/validation');
+const { validateContacto, validateSorteo, validateModelo, validateLogin } = require('./middleware/validation');
 
 const app = express();
 app.disable('x-powered-by');
@@ -1295,6 +1295,85 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
   }
 });
 
+// API - Sorteo (formulario reducido: nombre, email, teléfono; sin empresa ni mensaje)
+app.post('/api/sorteo', contactoLimiter, validateSorteo, async (req, res) => {
+  try {
+    const { nombre, email, telefono } = req.body;
+
+    try {
+      const result = await contactosDB.create({
+        nombre,
+        email,
+        telefono: telefono || null,
+        empresa: null,
+        mensaje: null,
+        confirmado: false
+      });
+
+      const contacto = await contactosDB.getById(result.lastID);
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      if (contactosDB && typeof contactosDB.setConfirmToken === 'function') {
+        await contactosDB.setConfirmToken({ id: contacto?.id || result.lastID, token, expiraEn: expiresAt });
+      }
+
+      const baseUrl = getBaseUrl(req);
+      const confirmPageUrl = baseUrl ? `${baseUrl}/confirmar?token=${encodeURIComponent(token)}` : '';
+      const emailCfg = getEmailConfig();
+
+      let emailResult = null;
+      let emailSent = false;
+      let emailSkipped = false;
+      let emailReason = null;
+
+      try {
+        if (!confirmPageUrl) {
+          emailReason = 'missing_base_url';
+        } else {
+          emailResult = await sendEmail({
+            to: email,
+            subject: 'Confirmá tu email - Sorteo - Agencia Modelos Argentinas',
+            text:
+              `Hola ${nombre},\n\n` +
+              `Para confirmar tu participación en el sorteo, ingresá acá:\n${confirmPageUrl}\n\n` +
+              `Este link vence en 24 horas.\n`,
+            html:
+              `<p>Hola <strong>${String(nombre)}</strong>,</p>` +
+              `<p>Para confirmar tu participación en el sorteo, hacé clic acá:</p>` +
+              `<p><a href="${confirmPageUrl}">Confirmar mi email</a></p>` +
+              `<p>Este link vence en 24 horas.</p>`
+          });
+          emailSent = !!emailResult?.ok;
+          emailSkipped = !!emailResult?.skipped;
+          if (emailSkipped && emailResult?.error === 'missing_config') emailReason = 'missing_smtp_config';
+          if (!emailSent && !emailSkipped && emailResult?.error) emailReason = 'smtp_send_failed';
+        }
+      } catch (mailErr) {
+        emailReason = 'smtp_send_threw';
+        console.error('Error enviando email sorteo:', mailErr);
+      }
+
+      res.json({
+        success: true,
+        message: emailSent
+          ? '¡Gracias! Te enviamos un email para confirmar tu participación en el sorteo.'
+          : '¡Gracias! Recibimos tus datos para el sorteo. No pudimos enviarte el email de confirmación; contactanos si tenés dudas.',
+        contacto
+      });
+
+      const emailDomain = typeof email === 'string' && email.includes('@') ? email.split('@').pop() : null;
+      auditLogSafe(req, { event_type: 'sorteo_submit', severity: 'info', meta: { contactoId: contacto?.id, emailDomain, confirmado: false, emailSent, emailSkipped, emailReason } });
+    } catch (dbError) {
+      console.error('Error en base de datos sorteo:', dbError);
+      res.status(500).json({ success: false, message: 'Error guardando datos. Por favor, intenta más tarde.' });
+    }
+  } catch (error) {
+    console.error('Error en endpoint /api/sorteo:', error);
+    res.status(500).json({ success: false, message: 'Error procesando la solicitud. Por favor, intenta más tarde.' });
+  }
+});
+
 // API - Confirmar email de contacto (público)
 app.get('/api/contacto/confirm', async (req, res) => {
   try {
@@ -1442,6 +1521,36 @@ app.post('/api/admin/generar-qr', requireAuth, requireCsrf, async (req, res) => 
     res.status(500).json({ 
       success: false, 
       message: 'Error generando QR: ' + error.message 
+    });
+  }
+});
+
+// API - Generar QR Sorteo (admin)
+app.post('/api/admin/generar-qr-sorteo', requireAuth, requireCsrf, async (req, res) => {
+  try {
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const sorteoUrl = `${protocol}://${host}/sorteo`;
+    
+    const qrCodeDataURL = await QRCode.toDataURL(sorteoUrl, {
+      width: 400,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+    
+    res.json({ 
+      success: true, 
+      qr: qrCodeDataURL,
+      url: sorteoUrl
+    });
+    auditLogSafe(req, { event_type: 'admin_qr_sorteo_generate', severity: 'info', meta: { url: sorteoUrl } });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error generando QR sorteo: ' + error.message 
     });
   }
 });

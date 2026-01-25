@@ -113,6 +113,44 @@ function validateContacto(req, res, next) {
   next();
 }
 
+/**
+ * Middleware para validar datos de sorteo (solo nombre, email, teléfono)
+ */
+function validateSorteo(req, res, next) {
+  const { nombre, email, telefono, website } = req.body;
+
+  if (website && String(website).trim()) {
+    return res.json({ success: true, message: 'OK' });
+  }
+
+  if (!nombre || !nombre.trim()) {
+    return res.status(400).json({ success: false, message: 'El nombre es requerido' });
+  }
+
+  const sanitizedNombre = sanitizeString(nombre, 100);
+  if (!sanitizedNombre) {
+    return res.status(400).json({ success: false, message: 'El nombre no es válido' });
+  }
+
+  if (!email || !email.trim()) {
+    return res.status(400).json({ success: false, message: 'El email es requerido' });
+  }
+  if (!validateEmail(email)) {
+    return res.status(400).json({ success: false, message: 'El formato del email no es válido' });
+  }
+
+  if (telefono && !validatePhone(telefono)) {
+    return res.status(400).json({ success: false, message: 'El formato del teléfono no es válido' });
+  }
+
+  req.body.nombre = sanitizedNombre;
+  req.body.email = email.trim().toLowerCase();
+  req.body.telefono = telefono ? sanitizeString(telefono, 20) : null;
+  if (req.body.website !== undefined) delete req.body.website;
+
+  next();
+}
+
 const MAX_FOTOS_MODELO = 20;
 
 /**
@@ -237,6 +275,7 @@ function validateLogin(req, res, next) {
 
 module.exports = {
   validateContacto,
+  validateSorteo,
   validateModelo,
   validateLogin,
   sanitizeString,

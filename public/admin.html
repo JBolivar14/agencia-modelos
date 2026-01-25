@@ -30,9 +30,10 @@
 
         <!-- Tab QR -->
         <div id="tab-qr" class="tab-content active">
+            <!-- QR Contacto (formulario completo) -->
             <div class="card">
-                <h2>Generar Código QR</h2>
-                <p class="subtitle">Genera un código QR para compartir con futuras modelos</p>
+                <h2>Generar Código QR — Contacto</h2>
+                <p class="subtitle">Genera un código QR para compartir con futuras modelos (formulario completo)</p>
                 
                 <div class="qr-admin-wrapper">
                     <div id="qrAdminContainer" class="qr-admin-placeholder">
@@ -40,7 +41,7 @@
                     </div>
                 </div>
                 
-                <button onclick="generarQR()" class="btn-primary">Generar QR</button>
+                <button onclick="generarQR()" class="btn-primary">Generar QR Contacto</button>
                 
                 <div id="qrUrl" class="qr-url-display" style="display: none;">
                     <p><strong>URL:</strong> <span id="qrUrlText"></span></p>
@@ -83,6 +84,68 @@
                                 <span>Email</span>
                             </button>
                             <button onclick="compartirTelegram()" class="share-btn share-telegram">
+                                <span class="share-icon">✈️</span>
+                                <span>Telegram</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Sorteo (formulario reducido: nombre, email, teléfono) -->
+            <div class="card" style="margin-top: 1.5rem;">
+                <h2>Generar Código QR — Sorteo</h2>
+                <p class="subtitle">QR solo para sorteos: formulario con nombre, email y teléfono (sin empresa ni mensaje)</p>
+                
+                <div class="qr-admin-wrapper">
+                    <div id="qrAdminContainerSorteo" class="qr-admin-placeholder">
+                        <p>Haz clic en "Generar QR Sorteo" para crear el código</p>
+                    </div>
+                </div>
+                
+                <button onclick="generarQRSorteo()" class="btn-primary">Generar QR Sorteo</button>
+                
+                <div id="qrUrlSorteo" class="qr-url-display" style="display: none;">
+                    <p><strong>URL:</strong> <span id="qrUrlTextSorteo"></span></p>
+                    <div class="qr-actions">
+                        <button onclick="copiarQRUrlSorteo(event)" class="btn-copy">📋 Copiar URL</button>
+                        <button onclick="compartirWhatsAppSorteo()" class="btn-share btn-whatsapp">💬 Compartir por WhatsApp</button>
+                        <button onclick="compartirQRSorteo()" class="btn-share" id="btnShareNativeSorteo">📤 Compartir (Nativo)</button>
+                        <button onclick="compartirEnRedesSorteo()" class="btn-share-social">🌐 Compartir en Redes</button>
+                    </div>
+                    
+                    <div class="share-buttons" id="shareButtonsSorteo" style="display: none;">
+                        <p class="share-title">Compartir en:</p>
+                        <div class="share-grid">
+                            <button onclick="compartirWhatsAppSorteo()" class="share-btn share-whatsapp">
+                                <span class="share-icon">💬</span>
+                                <span>WhatsApp</span>
+                            </button>
+                            <button onclick="compartirFacebookSorteo()" class="share-btn share-facebook">
+                                <span class="share-icon">📘</span>
+                                <span>Facebook</span>
+                            </button>
+                            <button onclick="compartirTwitterSorteo()" class="share-btn share-twitter">
+                                <span class="share-icon">🐦</span>
+                                <span>Twitter</span>
+                            </button>
+                            <button onclick="compartirXSorteo()" class="share-btn share-x">
+                                <span class="share-icon" style="font-size: 1.5em; font-weight: bold;">𝕏</span>
+                                <span>X</span>
+                            </button>
+                            <button onclick="compartirInstagramSorteo()" class="share-btn share-instagram">
+                                <span class="share-icon" style="font-size: 1.5em;">📸</span>
+                                <span>Instagram</span>
+                            </button>
+                            <button onclick="compartirLinkedInSorteo()" class="share-btn share-linkedin">
+                                <span class="share-icon">💼</span>
+                                <span>LinkedIn</span>
+                            </button>
+                            <button onclick="compartirEmailSorteo()" class="share-btn share-email">
+                                <span class="share-icon">✉️</span>
+                                <span>Email</span>
+                            </button>
+                            <button onclick="compartirTelegramSorteo()" class="share-btn share-telegram">
                                 <span class="share-icon">✈️</span>
                                 <span>Telegram</span>
                             </button>

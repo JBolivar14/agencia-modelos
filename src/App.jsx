@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import ModeloDetalle from './pages/ModeloDetalle';
 import Contacto from './pages/Contacto';
+import Sorteo from './pages/Sorteo';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 import FormularioModelo from './pages/FormularioModelo';
@@ -18,6 +19,7 @@ function App() {
         <Route index element={<Home />} />
         <Route path="modelo/:id" element={<ModeloDetalle />} />
         <Route path="contacto" element={<Contacto />} />
+        <Route path="sorteo" element={<Sorteo />} />
         <Route path="confirmar" element={<ConfirmarEmail />} />
         <Route path="reset-password" element={<ResetPassword />} />
         <Route path="login" element={<Login />} />
