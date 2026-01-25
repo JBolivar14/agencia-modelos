@@ -23,21 +23,21 @@
 
     <div class="container admin-container">
         <div class="admin-tabs">
-            <button class="tab-button active" onclick="showTab('qr', this)">Generar QR</button>
+            <button class="tab-button active" onclick="showTab('qr', this)">QR Contacto</button>
+            <button class="tab-button" onclick="showTab('qr-sorteo', this)">QR Sorteo</button>
             <button class="tab-button" onclick="showTab('modelos', this)">Modelos</button>
             <button class="tab-button" onclick="showTab('contactos', this)">Contactos</button>
         </div>
 
-        <!-- Tab QR -->
+        <!-- Tab QR Contacto -->
         <div id="tab-qr" class="tab-content active">
-            <!-- QR Contacto (formulario completo) -->
             <div class="card">
                 <h2>Generar Código QR — Contacto</h2>
                 <p class="subtitle">Genera un código QR para compartir con futuras modelos (formulario completo)</p>
                 
                 <div class="qr-admin-wrapper">
                     <div id="qrAdminContainer" class="qr-admin-placeholder">
-                        <p>Haz clic en "Generar QR" para crear el código</p>
+                        <p>Haz clic en "Generar QR Contacto" para crear el código</p>
                     </div>
                 </div>
                 
@@ -91,9 +91,11 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- QR Sorteo (formulario reducido: nombre, email, teléfono) -->
-            <div class="card" style="margin-top: 1.5rem;">
+        <!-- Tab QR Sorteo -->
+        <div id="tab-qr-sorteo" class="tab-content">
+            <div class="card">
                 <h2>Generar Código QR — Sorteo</h2>
                 <p class="subtitle">QR solo para sorteos: formulario con nombre, email y teléfono (sin empresa ni mensaje)</p>
                 

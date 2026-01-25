@@ -718,7 +718,13 @@ function Admin() {
             className={`tab-button ${activeTab === 'qr' ? 'active' : ''}`}
             onClick={() => setActiveTab('qr')}
           >
-            Generar QR
+            QR Contacto
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'qr-sorteo' ? 'active' : ''}`}
+            onClick={() => setActiveTab('qr-sorteo')}
+          >
+            QR Sorteo
           </button>
           <button
             className={`tab-button ${activeTab === 'modelos' ? 'active' : ''}`}
@@ -746,10 +752,9 @@ function Admin() {
           </button>
         </div>
 
-        {/* Tab QR */}
+        {/* Tab QR Contacto */}
         {activeTab === 'qr' && (
           <div className="tab-content active">
-            {/* QR Contacto */}
             <div className="card">
               <h2>Generar Código QR — Contacto</h2>
               <p className="subtitle">Formulario completo para futuras modelos</p>
@@ -779,9 +784,13 @@ function Admin() {
                 </div>
               )}
             </div>
+          </div>
+        )}
 
-            {/* QR Sorteo */}
-            <div className="card" style={{ marginTop: '1.5rem' }}>
+        {/* Tab QR Sorteo */}
+        {activeTab === 'qr-sorteo' && (
+          <div className="tab-content active">
+            <div className="card">
               <h2>Generar Código QR — Sorteo</h2>
               <p className="subtitle">Solo sorteos: nombre, email y teléfono (sin empresa ni mensaje)</p>
               
