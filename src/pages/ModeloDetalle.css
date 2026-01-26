@@ -254,7 +254,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn 0.2s ease;
+  /* Optimizaciones de rendimiento */
+  will-change: opacity;
+  contain: layout style paint;
 }
 
 .lightbox-overlay {
@@ -265,6 +268,9 @@
   height: 100%;
   cursor: pointer;
   z-index: 10001;
+  /* Optimizaciones de rendimiento */
+  will-change: opacity;
+  contain: layout style paint;
 }
 
 .lightbox-close {
@@ -345,7 +351,13 @@
   max-height: 70vh;
   object-fit: contain;
   border-radius: 0.5rem;
-  transition: transform 0.3s ease;
+  transition: transform 0.2s ease-out;
+  /* Optimizaciones de rendimiento */
+  will-change: transform;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .lightbox-img.zoomed {
@@ -382,8 +394,11 @@
   border-radius: 0.25rem;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: all 0.3s ease;
+  transition: border-color 0.2s ease-out, transform 0.2s ease-out;
   flex-shrink: 0;
+  /* Optimizaciones de rendimiento */
+  will-change: transform, border-color;
+  contain: layout style paint;
 }
 
 .lightbox-thumbnail:hover {

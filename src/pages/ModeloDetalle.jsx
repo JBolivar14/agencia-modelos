@@ -1,6 +1,18 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, startTransition } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ModeloDetalle.css';
+
+// Componente memoizado para miniaturas del lightbox
+const LightboxThumbnail = React.memo(({ foto, index, isActive, onClick }) => (
+  <div
+    className={`lightbox-thumbnail ${isActive ? 'active' : ''}`}
+    style={{ backgroundImage: `url('${foto}')` }}
+    onClick={onClick}
+    title={`Foto ${index + 1}`}
+  />
+));
+
+LightboxThumbnail.displayName = 'LightboxThumbnail';
 
 function ModeloDetalle() {
   const { id } = useParams();
@@ -14,6 +26,7 @@ function ModeloDetalle() {
   const [isZoomed, setIsZoomed] = useState(false);
   const lightboxCloseRef = useRef(null);
   const lightboxPrevFocusRef = useRef(null);
+  const preloadedImagesRef = useRef(new Set());
 
   useEffect(() => {
     if (id) {
@@ -77,6 +90,10 @@ function ModeloDetalle() {
   
   const fotoPrincipal = todasLasFotos[fotoPrincipalIndex] || null;
   
+  const abrirLightboxDesdePrincipal = useCallback(() => {
+    abrirLightbox(fotoPrincipalIndex);
+  }, [abrirLightbox, fotoPrincipalIndex]);
+  
   // Debug
   useEffect(() => {
     if (modelo) {
@@ -86,47 +103,115 @@ function ModeloDetalle() {
     }
   }, [modelo, todasLasFotos, fotoPrincipalIndex, fotoPrincipal]);
 
-  const cambiarFotoPrincipal = (index) => {
+  // Precargar imágenes adyacentes
+  const precargarImagenes = useCallback((currentIndex, fotos) => {
+    if (!fotos || fotos.length === 0) return;
+    
+    const indicesParaPrecargar = [
+      (currentIndex - 1 + fotos.length) % fotos.length, // Anterior
+      (currentIndex + 1) % fotos.length, // Siguiente
+    ];
+    
+    indicesParaPrecargar.forEach((idx) => {
+      const url = fotos[idx];
+      if (url && !preloadedImagesRef.current.has(url)) {
+        const img = new Image();
+        img.src = url;
+        preloadedImagesRef.current.add(url);
+      }
+    });
+  }, []);
+
+  // Precargar todas las imágenes cuando se abre el lightbox
+  useEffect(() => {
+    if (lightboxOpen && todasLasFotos.length > 0) {
+      // Precargar todas las imágenes en segundo plano
+      todasLasFotos.forEach((url) => {
+        if (url && !preloadedImagesRef.current.has(url)) {
+          const img = new Image();
+          img.src = url;
+          preloadedImagesRef.current.add(url);
+        }
+      });
+    }
+  }, [lightboxOpen, todasLasFotos]);
+
+  // Precargar imágenes adyacentes cuando cambia el índice
+  useEffect(() => {
+    if (lightboxOpen && todasLasFotos.length > 0) {
+      precargarImagenes(lightboxIndex, todasLasFotos);
+    }
+  }, [lightboxIndex, lightboxOpen, todasLasFotos, precargarImagenes]);
+
+  const cambiarFotoPrincipal = useCallback((index) => {
     if (index >= 0 && index < todasLasFotos.length) {
       setFotoPrincipalIndex(index);
     }
-  };
+  }, [todasLasFotos.length]);
 
-  const abrirLightbox = (index = fotoPrincipalIndex) => {
+  const abrirLightbox = useCallback((index = fotoPrincipalIndex) => {
     if (todasLasFotos.length === 0) {
       alert('No hay fotos disponibles para mostrar');
       return;
     }
+    const validIndex = index >= 0 && index < todasLasFotos.length ? index : 0;
     lightboxPrevFocusRef.current = document.activeElement;
-    setLightboxIndex(index >= 0 && index < todasLasFotos.length ? index : 0);
-    setLightboxOpen(true);
-    setIsZoomed(false);
+    
+    // Usar startTransition para operaciones no críticas
+    startTransition(() => {
+      setLightboxIndex(validIndex);
+      setLightboxOpen(true);
+      setIsZoomed(false);
+    });
+    
+    // Operaciones críticas inmediatas
     document.body.style.overflow = 'hidden';
-  };
+  }, [fotoPrincipalIndex, todasLasFotos.length]);
 
-  const cerrarLightbox = () => {
-    setLightboxOpen(false);
-    setIsZoomed(false);
+  const cerrarLightbox = useCallback(() => {
+    startTransition(() => {
+      setLightboxOpen(false);
+      setIsZoomed(false);
+    });
     document.body.style.overflow = '';
     const prev = lightboxPrevFocusRef.current;
     if (prev && typeof prev.focus === 'function') {
       requestAnimationFrame(() => prev.focus());
     }
-  };
+  }, []);
 
-  const fotoAnterior = () => {
-    setLightboxIndex((prev) => (prev - 1 + todasLasFotos.length) % todasLasFotos.length);
-    setIsZoomed(false);
-  };
+  const fotoAnterior = useCallback(() => {
+    setLightboxIndex((prev) => {
+      const newIndex = (prev - 1 + todasLasFotos.length) % todasLasFotos.length;
+      setIsZoomed(false);
+      return newIndex;
+    });
+  }, [todasLasFotos.length]);
 
-  const fotoSiguiente = () => {
-    setLightboxIndex((prev) => (prev + 1) % todasLasFotos.length);
-    setIsZoomed(false);
-  };
+  const fotoSiguiente = useCallback(() => {
+    setLightboxIndex((prev) => {
+      const newIndex = (prev + 1) % todasLasFotos.length;
+      setIsZoomed(false);
+      return newIndex;
+    });
+  }, [todasLasFotos.length]);
 
-  const toggleZoom = () => {
-    setIsZoomed(!isZoomed);
-  };
+  const cambiarFotoLightbox = useCallback((index) => {
+    if (index >= 0 && index < todasLasFotos.length) {
+      setLightboxIndex(index);
+      setIsZoomed(false);
+    }
+  }, [todasLasFotos.length]);
+
+  const toggleZoom = useCallback(() => {
+    setIsZoomed((prev) => !prev);
+  }, []);
+
+  const handleOverlayClick = useCallback((e) => {
+    if (e.target.id === 'lightbox' || e.target.id === 'lightboxOverlay') {
+      cerrarLightbox();
+    }
+  }, [cerrarLightbox]);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -136,8 +221,9 @@ function ModeloDetalle() {
   }, [lightboxOpen]);
 
   useEffect(() => {
+    if (!lightboxOpen) return;
+    
     const handleKeyDown = (e) => {
-      if (!lightboxOpen) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         cerrarLightbox();
@@ -170,9 +256,9 @@ function ModeloDetalle() {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, { passive: false });
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxOpen]);
+  }, [lightboxOpen, cerrarLightbox, fotoAnterior, fotoSiguiente]);
 
   if (loading) {
     return (
@@ -215,7 +301,7 @@ function ModeloDetalle() {
               <div
                 className="hero-photo-large"
                 style={{ backgroundImage: `url('${fotoPrincipal}')` }}
-                onClick={() => abrirLightbox(fotoPrincipalIndex)}
+                onClick={abrirLightboxDesdePrincipal}
               />
             ) : (
               <div className="hero-photo-large placeholder">
@@ -318,11 +404,7 @@ function ModeloDetalle() {
             aria-label="Galería de fotos"
             aria-modal="true"
             tabIndex="-1"
-            onClick={(e) => {
-              if (e.target.id === 'lightbox' || e.target.id === 'lightboxOverlay') {
-                cerrarLightbox();
-              }
-            }}
+            onClick={handleOverlayClick}
           >
             <div className="lightbox-overlay" id="lightboxOverlay" />
             <button
@@ -360,9 +442,11 @@ function ModeloDetalle() {
                 alt="Foto del modelo"
                 className={`lightbox-img ${isZoomed ? 'zoomed' : ''}`}
                 onClick={toggleZoom}
+                loading="eager"
                 style={{
                   cursor: isZoomed ? 'zoom-out' : 'zoom-in',
                   transform: isZoomed ? 'scale(2)' : 'scale(1)',
+                  transition: 'transform 0.2s ease-out',
                 }}
               />
               <div className="lightbox-info">
@@ -374,15 +458,12 @@ function ModeloDetalle() {
             {todasLasFotos.length > 1 && (
               <div className="lightbox-thumbnails" id="lightboxThumbnails">
                 {todasLasFotos.map((foto, i) => (
-                  <div
+                  <LightboxThumbnail
                     key={i}
-                    className={`lightbox-thumbnail ${i === lightboxIndex ? 'active' : ''}`}
-                    style={{ backgroundImage: `url('${foto}')` }}
-                    onClick={() => {
-                      setLightboxIndex(i);
-                      setIsZoomed(false);
-                    }}
-                    title={`Foto ${i + 1}`}
+                    foto={foto}
+                    index={i}
+                    isActive={i === lightboxIndex}
+                    onClick={() => cambiarFotoLightbox(i)}
                   />
                 ))}
               </div>
