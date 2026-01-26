@@ -134,7 +134,7 @@ Base: `/api`. Autenticación vía cookie `adminToken` (JWT) o sesión. CSRF en m
 | `DELETE` | `/api/admin/modelos/:id` | Borrar modelo (hard delete, CSRF) |
 | `POST` | `/api/admin/modelos/bulk` | Acciones masivas (activar/desactivar/eliminar) |
 | `POST` | `/api/admin/storage/modelo-fotos/signed-urls` | URLs firmadas Supabase para subir fotos |
-| `GET` | `/api/admin/contactos` | Listar contactos (filtros, paginación) |
+| `GET` | `/api/admin/contactos` | Listar contactos (filtros: q, from, to, **origen** contacto\|sorteo, paginación) |
 | `GET` | `/api/admin/audit` | Logs de auditoría |
 | `POST` | `/api/admin/generar-qr` | Generar QR formulario contacto (CSRF) |
 | `POST` | `/api/admin/generar-qr-sorteo` | Generar QR formulario sorteo (CSRF) |
@@ -154,14 +154,14 @@ Base: `/api`. Autenticación vía cookie `adminToken` (JWT) o sesión. CSRF en m
 | **usuarios** | Admins y usuarios modelo. `rol` (`admin` \| `modelo`), `modelo_id` para link con `modelos`. |
 | **modelos** | Perfiles: nombre, apellido, email, teléfono, edad, altura, medidas, ciudad, foto, descripcion, activa. |
 | **modelo_fotos** | Fotos por modelo (`modelo_id`, `url`, `orden`). |
-| **contactos** | Datos de formulario contacto/sorteo: nombre, email, teléfono, empresa, mensaje, confirmación. |
+| **contactos** | Datos de formulario contacto/sorteo: nombre, email, teléfono, empresa, mensaje, confirmación, **origen** (`contacto` \| `sorteo`). |
 | **audit_logs** | Eventos (login, errores, etc.). |
 
 ### Uso
 
 - **Local**: SQLite (`agencia.db`). Creada/al migrada al arrancar.
 - **Producción (Vercel)**: Supabase. `USE_SUPABASE=true` y credenciales en env.
-- Migraciones SQL: `supabase-migration.sql`, `supabase-usuarios-*.sql`, etc.
+- Migraciones SQL: `supabase-migration.sql`, `supabase-usuarios-*.sql`, `supabase-contactos-origen.sql` (origen contacto/sorteo), etc.
 - Migrar datos: `node migrate-to-supabase.js`.
 
 ---
@@ -180,7 +180,7 @@ Base: `/api`. Autenticación vía cookie `adminToken` (JWT) o sesión. CSRF en m
 ### Admin
 
 - **Modelos**: Listado con búsqueda, filtros (ciudad, activa), orden, paginación. Crear, editar, activar/desactivar, eliminar. Subida de fotos vía Supabase signed URLs.
-- **Contactos**: Listado con búsqueda y filtros.
+- **Contactos**: Listado con búsqueda, filtros (fechas, **origen**: Contacto / Sorteo) y columna Origen en la tabla.
 - **Usuarios**: Solo admins. Crear usuario admin (username, email, nombre, contraseña).
 - **Auditoría**: Consulta de logs.
 - **QR Contacto**: Generar QR → `/contacto`. Copiar URL, compartir (nativo, WhatsApp), **descargar PNG**.

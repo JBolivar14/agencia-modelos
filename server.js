@@ -1294,7 +1294,8 @@ app.post('/api/contacto', contactoLimiter, validateContacto, async (req, res) =>
         telefono, 
         empresa, 
         mensaje,
-        confirmado: false
+        confirmado: false,
+        origen: 'contacto'
       });
       
       const contacto = await contactosDB.getById(result.lastID);
@@ -1399,7 +1400,8 @@ app.post('/api/sorteo', contactoLimiter, validateSorteo, async (req, res) => {
         telefono: telefono || null,
         empresa: null,
         mensaje: null,
-        confirmado: false
+        confirmado: false,
+        origen: 'sorteo'
       });
 
       const contacto = await contactosDB.getById(result.lastID);
@@ -1556,13 +1558,14 @@ app.get('/api/admin/contactos', requireAuth, async (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q : '';
     const from = typeof req.query.from === 'string' ? req.query.from : '';
     const to = typeof req.query.to === 'string' ? req.query.to : '';
+    const origen = req.query.origen === 'sorteo' ? 'sorteo' : (req.query.origen === 'contacto' ? 'contacto' : '');
 
     const page = Number.isFinite(Number(req.query.page)) ? parseInt(req.query.page, 10) : 1;
     const pageSize = Number.isFinite(Number(req.query.pageSize)) ? parseInt(req.query.pageSize, 10) : 20;
     const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : 'fecha';
     const sortDir = typeof req.query.sortDir === 'string' ? req.query.sortDir : 'desc';
 
-    const result = await contactosDB.getAll({ q, from, to, page, pageSize, sortBy, sortDir });
+    const result = await contactosDB.getAll({ q, from, to, origen, page, pageSize, sortBy, sortDir });
     const contactos = Array.isArray(result) ? result : (result?.rows || []);
     const total = Array.isArray(result) ? contactos.length : (result?.total ?? contactos.length);
 

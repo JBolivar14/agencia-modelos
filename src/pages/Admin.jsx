@@ -43,6 +43,7 @@ function Admin() {
   const [contactoQuery, setContactoQuery] = useState('');
   const [contactoFrom, setContactoFrom] = useState(''); // YYYY-MM-DD
   const [contactoTo, setContactoTo] = useState(''); // YYYY-MM-DD
+  const [contactoOrigen, setContactoOrigen] = useState(''); // '' | 'contacto' | 'sorteo'
   const [contactoPage, setContactoPage] = useState(1);
   const [contactoPageSize, setContactoPageSize] = useState(20);
   const [contactoSortBy, setContactoSortBy] = useState('fecha');
@@ -156,7 +157,7 @@ function Admin() {
     }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, contactoQuery, contactoFrom, contactoTo, contactoPage, contactoPageSize, contactoSortBy, contactoSortDir]);
+  }, [activeTab, contactoQuery, contactoFrom, contactoTo, contactoOrigen, contactoPage, contactoPageSize, contactoSortBy, contactoSortDir]);
 
   useEffect(() => {
     if (activeTab !== 'audit') return;
@@ -316,6 +317,7 @@ function Admin() {
       if (contactoQuery.trim()) params.set('q', contactoQuery.trim());
       if (contactoFrom) params.set('from', contactoFrom);
       if (contactoTo) params.set('to', contactoTo);
+      if (contactoOrigen) params.set('origen', contactoOrigen);
       params.set('page', String(contactoPage));
       params.set('pageSize', String(contactoPageSize));
       params.set('sortBy', contactoSortBy);
@@ -1157,6 +1159,19 @@ function Admin() {
                 />
 
                 <select
+                  value={contactoOrigen}
+                  onChange={(e) => {
+                    setContactoOrigen(e.target.value);
+                    setContactoPage(1);
+                  }}
+                  title="Origen"
+                >
+                  <option value="">Origen: todos</option>
+                  <option value="contacto">Contacto</option>
+                  <option value="sorteo">Sorteo</option>
+                </select>
+
+                <select
                   value={contactoSortBy}
                   onChange={(e) => {
                     setContactoSortBy(e.target.value);
@@ -1199,6 +1214,7 @@ function Admin() {
                     <thead>
                       <tr>
                         <th>Fecha</th>
+                        <th>Origen</th>
                         <th>Nombre</th>
                         <th>Email</th>
                         <th>Confirmado</th>
@@ -1211,12 +1227,13 @@ function Admin() {
                       {contactos.map(contacto => (
                         <tr key={contacto.id}>
                           <td>{new Date(contacto.fecha).toLocaleDateString('es-ES')}</td>
+                          <td>{contacto.origen === 'sorteo' ? 'Sorteo' : 'Contacto'}</td>
                           <td>{contacto.nombre}</td>
                           <td>{contacto.email}</td>
                           <td>{contacto.confirmado ? '✅' : '⏳'}</td>
                           <td>{contacto.telefono || '-'}</td>
                           <td>{contacto.empresa || '-'}</td>
-                          <td>{contacto.mensaje ? contacto.mensaje.substring(0, 50) + '...' : '-'}</td>
+                          <td>{contacto.mensaje ? contacto.mensaje.substring(0, 50) + (contacto.mensaje.length > 50 ? '...' : '') : '-'}</td>
                         </tr>
                       ))}
                     </tbody>

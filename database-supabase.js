@@ -602,6 +602,7 @@ const contactosDB = {
       (options.q ||
         options.from ||
         options.to ||
+        options.origen ||
         options.page ||
         options.pageSize ||
         options.sortBy ||
@@ -622,6 +623,7 @@ const contactosDB = {
     const qSafe = q.replace(/,/g, ' ');
     const from = typeof options.from === 'string' ? options.from.trim() : '';
     const to = typeof options.to === 'string' ? options.to.trim() : '';
+    const origen = options.origen === 'sorteo' ? 'sorteo' : (options.origen === 'contacto' ? 'contacto' : '');
 
     const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
     const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(100, Math.max(1, parseInt(options.pageSize, 10))) : 20;
@@ -643,6 +645,10 @@ const contactosDB = {
 
     if (to) {
       query = query.lte('fecha', `${to}T23:59:59.999Z`);
+    }
+
+    if (origen) {
+      query = query.eq('origen', origen);
     }
 
     if (qSafe) {
@@ -678,6 +684,7 @@ const contactosDB = {
     return data;
   },
   create: async (data) => {
+    const origen = data.origen === 'sorteo' ? 'sorteo' : 'contacto';
     const { data: result, error } = await supabase
       .from('contactos')
       .insert({
@@ -686,7 +693,8 @@ const contactosDB = {
         telefono: data.telefono || null,
         empresa: data.empresa || null,
         mensaje: data.mensaje || null,
-        confirmado: data.confirmado === true
+        confirmado: data.confirmado === true,
+        origen
       })
       .select()
       .single();

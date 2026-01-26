@@ -121,10 +121,15 @@ function initDatabase() {
             if (!has('confirm_token')) ops.push(`ALTER TABLE contactos ADD COLUMN confirm_token TEXT`);
             if (!has('confirm_token_expira')) ops.push(`ALTER TABLE contactos ADD COLUMN confirm_token_expira DATETIME`);
             if (!has('confirmado_en')) ops.push(`ALTER TABLE contactos ADD COLUMN confirmado_en DATETIME`);
+            if (!has('origen')) {
+              ops.push(`ALTER TABLE contactos ADD COLUMN origen TEXT DEFAULT 'contacto'`);
+              ops.push(`UPDATE contactos SET origen = 'contacto' WHERE origen IS NULL`);
+            }
 
             const ensureIdx = () => {
               db.run(`CREATE INDEX IF NOT EXISTS idx_contactos_confirmado ON contactos(confirmado)`);
               db.run(`CREATE INDEX IF NOT EXISTS idx_contactos_confirm_token ON contactos(confirm_token)`);
+              db.run(`CREATE INDEX IF NOT EXISTS idx_contactos_origen ON contactos(origen)`);
             };
 
             if (ops.length === 0) {
@@ -504,6 +509,7 @@ const contactosDB = {
         (options.q ||
           options.from ||
           options.to ||
+          options.origen ||
           options.page ||
           options.pageSize ||
           options.sortBy ||
@@ -521,6 +527,7 @@ const contactosDB = {
       const q = typeof options.q === 'string' ? options.q.trim().toLowerCase() : '';
       const from = typeof options.from === 'string' ? options.from.trim() : '';
       const to = typeof options.to === 'string' ? options.to.trim() : '';
+      const origen = options.origen === 'sorteo' ? 'sorteo' : (options.origen === 'contacto' ? 'contacto' : '');
 
       const page = Number.isFinite(Number(options.page)) ? Math.max(1, parseInt(options.page, 10)) : 1;
       const pageSize = Number.isFinite(Number(options.pageSize)) ? Math.min(100, Math.max(1, parseInt(options.pageSize, 10))) : 20;
@@ -544,6 +551,11 @@ const contactosDB = {
       if (to) {
         where.push('DATE(fecha) <= DATE(?)');
         params.push(to);
+      }
+
+      if (origen) {
+        where.push('origen = ?');
+        params.push(origen);
       }
 
       if (q) {
@@ -594,16 +606,18 @@ const contactosDB = {
   },
   create: (data) => {
     return new Promise((resolve, reject) => {
+      const origen = (data.origen === 'sorteo' ? 'sorteo' : 'contacto');
       db.run(
-        `INSERT INTO contactos (nombre, email, telefono, empresa, mensaje, confirmado)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO contactos (nombre, email, telefono, empresa, mensaje, confirmado, origen)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           data.nombre,
           data.email,
           data.telefono || null,
           data.empresa || null,
           data.mensaje || null,
-          data.confirmado ? 1 : 0
+          data.confirmado ? 1 : 0,
+          origen
         ],
         function(err) {
           if (err) reject(err);

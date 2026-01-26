@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS modelo_fotos (
 );
 
 -- Tabla de contactos (prospectos que llenan el formulario)
+-- origen: 'contacto' (formulario /contacto) o 'sorteo' (formulario /sorteo)
 CREATE TABLE IF NOT EXISTS contactos (
   id BIGSERIAL PRIMARY KEY,
   nombre TEXT NOT NULL,
@@ -63,7 +64,8 @@ CREATE TABLE IF NOT EXISTS contactos (
   confirm_token TEXT,
   confirm_token_expira TIMESTAMP WITH TIME ZONE,
   confirmado_en TIMESTAMP WITH TIME ZONE,
-  fecha TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  fecha TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  origen TEXT DEFAULT 'contacto'
 );
 
 -- Tabla de auditoría (eventos de seguridad/operación)
@@ -85,6 +87,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE INDEX IF NOT EXISTS idx_modelos_activa ON modelos(activa);
 CREATE INDEX IF NOT EXISTS idx_modelo_fotos_modelo_id ON modelo_fotos(modelo_id);
 CREATE INDEX IF NOT EXISTS idx_contactos_fecha ON contactos(fecha);
+CREATE INDEX IF NOT EXISTS idx_contactos_origen ON contactos(origen);
 CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username);
 CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol);
 CREATE INDEX IF NOT EXISTS idx_usuarios_confirm_token ON usuarios(confirm_token);

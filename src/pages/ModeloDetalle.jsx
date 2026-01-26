@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback, startTransition } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ModeloDetalle.css';
 
@@ -90,10 +90,6 @@ function ModeloDetalle() {
   
   const fotoPrincipal = todasLasFotos[fotoPrincipalIndex] || null;
   
-  const abrirLightboxDesdePrincipal = useCallback(() => {
-    abrirLightbox(fotoPrincipalIndex);
-  }, [abrirLightbox, fotoPrincipalIndex]);
-  
   // Debug
   useEffect(() => {
     if (modelo) {
@@ -157,28 +153,26 @@ function ModeloDetalle() {
     const validIndex = index >= 0 && index < todasLasFotos.length ? index : 0;
     lightboxPrevFocusRef.current = document.activeElement;
     
-    // Usar startTransition para operaciones no críticas
-    startTransition(() => {
-      setLightboxIndex(validIndex);
-      setLightboxOpen(true);
-      setIsZoomed(false);
-    });
-    
-    // Operaciones críticas inmediatas
+    // Actualizar estado de forma síncrona para mejor rendimiento
+    setLightboxIndex(validIndex);
+    setLightboxOpen(true);
+    setIsZoomed(false);
     document.body.style.overflow = 'hidden';
   }, [fotoPrincipalIndex, todasLasFotos.length]);
 
   const cerrarLightbox = useCallback(() => {
-    startTransition(() => {
-      setLightboxOpen(false);
-      setIsZoomed(false);
-    });
+    setLightboxOpen(false);
+    setIsZoomed(false);
     document.body.style.overflow = '';
     const prev = lightboxPrevFocusRef.current;
     if (prev && typeof prev.focus === 'function') {
       requestAnimationFrame(() => prev.focus());
     }
   }, []);
+
+  const abrirLightboxDesdePrincipal = useCallback(() => {
+    abrirLightbox(fotoPrincipalIndex);
+  }, [abrirLightbox, fotoPrincipalIndex]);
 
   const fotoAnterior = useCallback(() => {
     setLightboxIndex((prev) => {
