@@ -1481,7 +1481,9 @@ app.post('/api/sorteo', contactoLimiter, validateSorteo, async (req, res) => {
     const emailDomain = typeof email === 'string' && email.includes('@') ? email.split('@').pop() : null;
     auditLogSafe(req, { event_type: 'sorteo_submit', severity: 'info', meta: { contactoId: contacto?.id, emailDomain, confirmado: false, emailSent, emailSkipped, emailReason } });
   } catch (dbError) {
-    console.error('Error en base de datos sorteo:', dbError);
+    const msg = dbError?.message || String(dbError);
+    const code = dbError?.code || dbError?.details || '';
+    console.error('Error en base de datos sorteo:', msg, code || '(sin código)', dbError?.hint || '');
     res.status(500).json({ success: false, message: 'Error guardando datos. Por favor, intenta más tarde.' });
   }
 });

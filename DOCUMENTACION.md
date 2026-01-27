@@ -364,6 +364,7 @@ App en `http://localhost:3000`. SPA servida desde `dist/`.
 - **GUIA_FLUJO_REGISTRO.md**: Flujos contacto / modelos / admin.
 - **GUIA_TESTING_VERCEL.md**: Cómo probar en Vercel.
 - **VARIABLES_ENTORNO_VERCEL.md**: Variables y ejemplos.
+- **DIAGNOSTICO_IMAGENES.md**: Cómo diagnosticar por qué las imágenes cargan lento (Network, Lighthouse, causas y acciones).
 
 ---
 
@@ -371,6 +372,25 @@ App en `http://localhost:3000`. SPA servida desde `dist/`.
 
 - **Admin**: usuario `admin`, contraseña `admin123`.  
 - Cambiar en producción.
+
+---
+
+## 20. Troubleshooting — Error 500 en sorteo o contacto
+
+Si el formulario de **sorteo** o **contacto** devuelve *"Error guardando datos. Por favor, intenta más tarde"* (HTTP 500):
+
+1. **Revisar logs en Vercel**: Dashboard → proyecto → **Logs** / **Functions**. Buscar líneas con `Error en base de datos sorteo` o `Supabase contactos insert error`. Ahí aparecen el mensaje y el código de Supabase (p. ej. columna inexistente, violación de constraint).
+
+2. **Esquema de la tabla `contactos` en Supabase**: La tabla debe tener al menos:
+   - `nombre`, `email`, `telefono`, `empresa`, `mensaje`, `confirmado`, `fecha`
+   - Para sorteo/contacto por origen: columna **`origen`** (`TEXT`, default `'contacto'`).
+   - Para confirmación por email: `confirm_token`, `confirm_token_expira`, `confirmado_en`.
+
+3. **Migraciones incrementales** (si el proyecto ya tenía `contactos` sin esas columnas):
+   - **Origen**: ejecutar en el SQL Editor de Supabase el contenido de `supabase-contactos-origen.sql`.
+   - **Confirmación**: ejecutar `supabase-contactos-confirmacion.sql` si faltan columnas de confirmación.
+
+4. **RLS**: Si se usan políticas RLS, el backend debe conectarse con la **service role** (no anon). La app ya usa `SUPABASE_SERVICE_ROLE_KEY` para las operaciones de API.
 
 ---
 

@@ -699,7 +699,15 @@ const contactosDB = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase contactos insert error:', error.message, error.code, error.details);
+      throw error;
+    }
+    if (!result || result.id == null) {
+      const err = new Error('contactos insert did not return id');
+      err.code = 'NO_INSERT_ID';
+      throw err;
+    }
     return { lastID: result.id, changes: 1 };
   },
   setConfirmToken: async ({ id, token, expiraEn }) => {
