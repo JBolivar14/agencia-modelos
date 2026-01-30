@@ -776,6 +776,26 @@ const modeloFotosDB = {
     if (error) throw error;
     return data || [];
   },
+  getByModeloIds: async (modeloIds = []) => {
+    if (!Array.isArray(modeloIds) || modeloIds.length === 0) return [];
+
+    const cleanIds = [...new Set(modeloIds)]
+      .map((x) => parseInt(x, 10))
+      .filter((x) => Number.isFinite(x) && x > 0);
+
+    if (cleanIds.length === 0) return [];
+
+    const { data, error } = await supabase
+      .from('modelo_fotos')
+      .select('*')
+      .in('modelo_id', cleanIds)
+      .order('modelo_id', { ascending: true })
+      .order('orden', { ascending: true })
+      .order('creado_en', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
   create: async (modeloId, url, orden = 0) => {
     const { data: result, error } = await supabase
       .from('modelo_fotos')

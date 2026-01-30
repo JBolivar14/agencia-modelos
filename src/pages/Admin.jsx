@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { csrfFetch } from '../utils/csrf';
+import { getOptimizedImageUrl } from '../utils/images';
 import './Admin.css';
 
 function Admin() {
@@ -794,7 +795,13 @@ function Admin() {
               <div className="qr-admin-wrapper">
                 <div id="qrAdminContainer" className="qr-admin-placeholder">
                   {qrData ? (
-                    <img src={qrData.qr} alt="QR Code" style={{ maxWidth: '300px' }} />
+                    <img
+                      src={qrData.qr}
+                      alt="QR Code"
+                      loading="lazy"
+                      decoding="async"
+                      style={{ maxWidth: '300px' }}
+                    />
                   ) : (
                     <p>Haz clic en "Generar QR Contacto" para crear el código</p>
                   )}
@@ -830,7 +837,13 @@ function Admin() {
               <div className="qr-admin-wrapper">
                 <div className="qr-admin-placeholder">
                   {qrDataSorteo ? (
-                    <img src={qrDataSorteo.qr} alt="QR Sorteo" style={{ maxWidth: '300px' }} />
+                    <img
+                      src={qrDataSorteo.qr}
+                      alt="QR Sorteo"
+                      loading="lazy"
+                      decoding="async"
+                      style={{ maxWidth: '300px' }}
+                    />
                   ) : (
                     <p>Haz clic en "Generar QR Sorteo" para crear el código</p>
                   )}
@@ -1028,6 +1041,7 @@ function Admin() {
                         const primeraFoto = (modelo.fotos && modelo.fotos.length > 0 && modelo.fotos[0].url)
                           ? modelo.fotos[0].url
                           : modelo.foto;
+                        const thumbUrl = getOptimizedImageUrl(primeraFoto, { width: 200, quality: 70 });
                         return (
                           <tr key={modelo.id}>
                             <td>
@@ -1039,11 +1053,19 @@ function Admin() {
                               />
                             </td>
                             <td>
-                              {primeraFoto ? (
+                              {thumbUrl ? (
                                 <img
-                                  src={primeraFoto}
+                                  src={thumbUrl}
                                   alt={modelo.nombre}
                                   className="modelo-thumb"
+                                  loading="lazy"
+                                  decoding="async"
+                                  onError={(e) => {
+                                    if (!primeraFoto) return;
+                                    if (e.currentTarget.dataset.fallbackApplied) return;
+                                    e.currentTarget.dataset.fallbackApplied = 'true';
+                                    e.currentTarget.src = primeraFoto;
+                                  }}
                                 />
                               ) : (
                                 <span>📷</span>

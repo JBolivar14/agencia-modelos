@@ -1229,7 +1229,7 @@
         <button type="button" class="lightbox-prev" id="lightboxPrevBtn" aria-label="Foto anterior" onclick="if(window.fotoAnterior)window.fotoAnterior();">‹</button>
         <button type="button" class="lightbox-next" id="lightboxNextBtn" aria-label="Foto siguiente" onclick="if(window.fotoSiguiente)window.fotoSiguiente();">›</button>
         <div class="lightbox-content">
-            <img id="lightboxImage" src="" alt="Foto del modelo" class="lightbox-img">
+            <img id="lightboxImage" src="" alt="Foto del modelo" class="lightbox-img" loading="lazy" decoding="async">
             <div class="lightbox-info">
                 <span id="lightboxCounter" class="lightbox-counter"></span>
             </div>

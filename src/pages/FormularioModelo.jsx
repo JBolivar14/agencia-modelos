@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import imageCompression from 'browser-image-compression';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { csrfFetch } from '../utils/csrf';
+import { getOptimizedImageUrl } from '../utils/images';
 import './FormularioModelo.css';
 
 const MAX_FOTOS_MODELO = 20;
+const MAX_IMAGE_SIZE_MB = 0.1;
+const MAX_IMAGE_DIMENSION = 1600;
 
 function FormularioModelo() {
   const { id } = useParams();
@@ -147,6 +151,45 @@ function FormularioModelo() {
     return data.items;
   };
 
+  const normalizeCompressedName = (fileName, type) => {
+    const base = String(fileName || 'imagen').replace(/\.[^.]+$/, '');
+    if (type === 'image/webp') return `${base}.webp`;
+    if (type === 'image/png') return `${base}.png`;
+    return `${base}.jpg`;
+  };
+
+  const compressImageFile = async (file) => {
+    if (!file || !file.type || !file.type.startsWith('image/')) return file;
+    if (file.type === 'image/gif') return file; // preservar GIFs animados
+
+    const options = {
+      maxSizeMB: MAX_IMAGE_SIZE_MB,
+      maxWidthOrHeight: MAX_IMAGE_DIMENSION,
+      useWebWorker: true,
+      fileType: 'image/webp'
+    };
+
+    try {
+      const compressed = await imageCompression(file, options);
+      const blob = compressed instanceof Blob ? compressed : file;
+      const newType = blob.type || 'image/webp';
+      const newName = normalizeCompressedName(file.name, newType);
+      return new File([blob], newName, { type: newType, lastModified: Date.now() });
+    } catch (err) {
+      console.warn('Compresión falló, usando original:', err);
+      return file;
+    }
+  };
+
+  const compressImagesForUpload = async (files) => {
+    if (!files || files.length === 0) return [];
+    const results = [];
+    for (const file of files) {
+      results.push(await compressImageFile(file));
+    }
+    return results;
+  };
+
   const uploadFilesToSupabaseStorage = async (files) => {
     if (!files || files.length === 0) return [];
 
@@ -157,11 +200,12 @@ function FormularioModelo() {
       return [];
     }
 
-    const signedItems = await requestSignedUploadUrls(imageFiles);
+    const preparedFiles = await compressImagesForUpload(imageFiles);
+    const signedItems = await requestSignedUploadUrls(preparedFiles);
 
     const uploadedUrls = [];
-    for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i];
+    for (let i = 0; i < preparedFiles.length; i++) {
+      const file = preparedFiles[i];
       const item = signedItems[i];
 
       const putRes = await fetch(item.signedUrl, {
@@ -468,7 +512,24 @@ function FormularioModelo() {
                 />
                 {formData.foto && (
                   <div className="foto-preview">
-                    <img src={formData.foto} alt="Preview" onError={(e) => e.target.style.display = 'none'} />
+                    <img
+                      src={getOptimizedImageUrl(formData.foto, { width: 600, quality: 70 })}
+                      alt="Preview"
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        if (!formData.foto) {
+                          e.target.style.display = 'none';
+                          return;
+                        }
+                        if (e.currentTarget.dataset.fallbackApplied) {
+                          e.target.style.display = 'none';
+                          return;
+                        }
+                        e.currentTarget.dataset.fallbackApplied = 'true';
+                        e.currentTarget.src = formData.foto;
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -532,7 +593,24 @@ function FormularioModelo() {
                   {fotos.map((foto, index) => (
                     <div key={index} className="foto-item">
                       <div className="foto-preview-small">
-                        <img src={foto} alt={`Foto ${index + 1}`} onError={(e) => e.target.style.display = 'none'} />
+                        <img
+                          src={getOptimizedImageUrl(foto, { width: 300, quality: 60 })}
+                          alt={`Foto ${index + 1}`}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            if (!foto) {
+                              e.target.style.display = 'none';
+                              return;
+                            }
+                            if (e.currentTarget.dataset.fallbackApplied) {
+                              e.target.style.display = 'none';
+                              return;
+                            }
+                            e.currentTarget.dataset.fallbackApplied = 'true';
+                            e.currentTarget.src = foto;
+                          }}
+                        />
                       </div>
                       <div className="foto-url">{foto}</div>
                       <div className="foto-actions">

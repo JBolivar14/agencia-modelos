@@ -88,12 +88,13 @@
 .hero-photo-large {
   width: 100%;
   height: 500px;
-  background-size: cover;
-  background-position: center;
   border-radius: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  background: #f3f4f6;
 }
 
 .hero-photo-large:hover {
@@ -107,6 +108,19 @@
   align-items: center;
   justify-content: center;
   font-size: 6rem;
+}
+
+.hero-photo-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.hero-photo-large.is-loaded img {
+  opacity: 1;
 }
 
 .hero-info-wrapper {
@@ -218,17 +232,21 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 1rem;
+  content-visibility: auto;
+  contain-intrinsic-size: 300px;
 }
 
 .foto-miniatura {
   width: 100%;
   height: 150px;
-  background-size: cover;
-  background-position: center;
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
   border: 3px solid transparent;
+  background: #f3f4f6;
+  padding: 0;
+  overflow: hidden;
+  display: block;
 }
 
 .foto-miniatura:hover {
@@ -239,6 +257,19 @@
 .foto-miniatura.active {
   border-color: #CB262C;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.foto-miniatura img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.foto-miniatura.is-loaded img {
+  opacity: 1;
 }
 
 /* Lightbox */
@@ -389,8 +420,6 @@
 .lightbox-thumbnail {
   width: 60px;
   height: 60px;
-  background-size: cover;
-  background-position: center;
   border-radius: 0.25rem;
   cursor: pointer;
   border: 2px solid transparent;
@@ -399,6 +428,9 @@
   /* Optimizaciones de rendimiento */
   will-change: transform, border-color;
   contain: layout style paint;
+  background: #1f2937;
+  padding: 0;
+  overflow: hidden;
 }
 
 .lightbox-thumbnail:hover {
@@ -409,6 +441,13 @@
 .lightbox-thumbnail.active {
   border-color: #0483B8;
   box-shadow: 0 0 0 2px rgba(4, 131, 184, 0.5);
+}
+
+.lightbox-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 @keyframes fadeIn {

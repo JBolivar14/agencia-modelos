@@ -700,7 +700,7 @@ async function cargarModelos() {
                             <tr>
                                 <td>
                                     ${modelo.foto ? 
-                                        `<img src="${escapeHtml(modelo.foto)}" alt="${escapeHtml(modelo.nombre)}" class="table-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">` :
+                                        `<img src="${escapeHtml(getOptimizedSupabaseUrl(modelo.foto, 200, 70))}" data-fallback="${escapeHtml(modelo.foto)}" alt="${escapeHtml(modelo.nombre)}" class="table-photo" loading="lazy" decoding="async" onerror="if(!this.dataset.fallbackApplied && this.dataset.fallback){this.dataset.fallbackApplied='true';this.src=this.dataset.fallback;return;}this.style.display='none'; this.nextElementSibling.style.display='inline';">` :
                                         '<span class="no-photo">📷</span>'
                                     }
                                     ${modelo.foto ? '<span class="no-photo" style="display:none;">📷</span>' : ''}
@@ -733,6 +733,23 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function getOptimizedSupabaseUrl(url, width, quality) {
+    if (!url || typeof url !== 'string') return url;
+    if (!url.includes('/storage/v1/object/public/') && !url.includes('/storage/v1/render/image/public/')) return url;
+
+    let parsed;
+    try { parsed = new URL(url); } catch (e) { return url; }
+    const base = `${parsed.origin}${parsed.pathname}`;
+    const renderBase = base.includes('/storage/v1/render/image/public/')
+        ? base
+        : base.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/');
+    const params = new URLSearchParams(parsed.search);
+    if (width) params.set('width', String(width));
+    if (quality) params.set('quality', String(quality));
+    const query = params.toString();
+    return query ? `${renderBase}?${query}` : renderBase;
 }
 
 function mostrarFormModelo() {

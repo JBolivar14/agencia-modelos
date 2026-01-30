@@ -689,6 +689,33 @@ const modeloFotosDB = {
       });
     });
   },
+  getByModeloIds: (modeloIds = []) => {
+    return new Promise((resolve, reject) => {
+      if (!Array.isArray(modeloIds) || modeloIds.length === 0) {
+        resolve([]);
+        return;
+      }
+
+      const cleanIds = [...new Set(modeloIds)]
+        .map((x) => parseInt(x, 10))
+        .filter((x) => Number.isFinite(x) && x > 0);
+
+      if (cleanIds.length === 0) {
+        resolve([]);
+        return;
+      }
+
+      const placeholders = cleanIds.map(() => '?').join(',');
+      db.all(
+        `SELECT * FROM modelo_fotos WHERE modelo_id IN (${placeholders}) ORDER BY modelo_id ASC, orden ASC, creado_en ASC`,
+        cleanIds,
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+  },
   create: (modeloId, url, orden = 0) => {
     return new Promise((resolve, reject) => {
       db.run(

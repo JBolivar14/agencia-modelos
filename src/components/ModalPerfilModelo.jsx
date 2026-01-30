@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { csrfFetch } from '../utils/csrf';
 import { toast } from '../utils/toast';
+import { getOptimizedImageUrl } from '../utils/images';
 import './ModalPerfilModelo.css';
 
 function getFocusables(container) {
@@ -189,7 +190,19 @@ export default function ModalPerfilModelo({ open, onClose, onLogout }) {
           <div className="perfil-view">
             <div className="perfil-foto-wrap">
               {modelo.foto ? (
-                <img src={modelo.foto} alt="" className="perfil-foto" />
+                <img
+                  src={getOptimizedImageUrl(modelo.foto, { width: 400, quality: 70 })}
+                  alt=""
+                  className="perfil-foto"
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    if (!modelo.foto) return;
+                    if (e.currentTarget.dataset.fallbackApplied) return;
+                    e.currentTarget.dataset.fallbackApplied = 'true';
+                    e.currentTarget.src = modelo.foto;
+                  }}
+                />
               ) : (
                 <div className="perfil-foto-placeholder">Sin foto</div>
               )}

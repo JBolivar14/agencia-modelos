@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getOptimizedImageUrl } from '../utils/images';
 import './Home.css';
 
 function Home() {
@@ -10,6 +11,7 @@ function Home() {
   const [filterCiudad, setFilterCiudad] = useState('');
   const [filterEdad, setFilterEdad] = useState('');
   const [sortBy, setSortBy] = useState('nombre');
+  const [loadedImages, setLoadedImages] = useState(new Set());
   const navigate = useNavigate();
 
   // Cargar modelos
@@ -129,6 +131,16 @@ function Home() {
     return div.innerHTML;
   };
 
+  const markImageLoaded = (url) => {
+    if (!url) return;
+    setLoadedImages((prev) => {
+      if (prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  };
+
   return (
     <div className="home-page">
       <section className="hero">
@@ -184,6 +196,7 @@ function Home() {
             const primeraFoto = (modelo.fotos && modelo.fotos.length > 0 && modelo.fotos[0].url)
               ? modelo.fotos[0].url
               : modelo.foto;
+            const thumbUrl = getOptimizedImageUrl(primeraFoto, { width: 600, quality: 70 });
             
             return (
               <div
@@ -192,11 +205,23 @@ function Home() {
                 onClick={() => navigate(`/modelo/${modelo.id}`)}
                 style={{ cursor: 'pointer' }}
               >
-                {primeraFoto ? (
-                  <div
-                    className="modelo-foto"
-                    style={{ backgroundImage: `url('${primeraFoto}')` }}
-                  />
+                {thumbUrl ? (
+                  <div className={`modelo-foto ${loadedImages.has(thumbUrl) ? 'is-loaded' : 'is-loading'}`}>
+                    <img
+                      src={thumbUrl}
+                      alt={`Foto de ${modelo.nombre || 'modelo'}`}
+                      loading="lazy"
+                      decoding="async"
+                      onLoad={() => markImageLoaded(thumbUrl)}
+                      onError={(e) => {
+                        markImageLoaded(thumbUrl);
+                        if (!primeraFoto) return;
+                        if (e.currentTarget.dataset.fallbackApplied) return;
+                        e.currentTarget.dataset.fallbackApplied = 'true';
+                        e.currentTarget.src = primeraFoto;
+                      }}
+                    />
+                  </div>
                 ) : (
                   <div className="modelo-foto placeholder">
                     <span>📷</span>

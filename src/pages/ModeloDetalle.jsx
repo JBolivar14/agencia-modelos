@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { getOptimizedImageUrl } from '../utils/images';
 import './ModeloDetalle.css';
 
 // Componente memoizado para miniaturas del lightbox
 const LightboxThumbnail = React.memo(({ foto, index, isActive, onClick }) => (
-  <div
+  <button
+    type="button"
     className={`lightbox-thumbnail ${isActive ? 'active' : ''}`}
-    style={{ backgroundImage: `url('${foto}')` }}
     onClick={onClick}
     title={`Foto ${index + 1}`}
-  />
+  >
+    <img src={foto} alt={`Miniatura ${index + 1}`} loading="lazy" decoding="async" />
+  </button>
 ));
 
 LightboxThumbnail.displayName = 'LightboxThumbnail';
@@ -24,6 +27,8 @@ function ModeloDetalle() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [heroLoaded, setHeroLoaded] = useState(false);
+  const [thumbsLoaded, setThumbsLoaded] = useState(new Set());
   const lightboxCloseRef = useRef(null);
   const lightboxPrevFocusRef = useRef(null);
   const preloadedImagesRef = useRef(new Set());
@@ -89,6 +94,26 @@ function ModeloDetalle() {
   }, [modelo]);
   
   const fotoPrincipal = todasLasFotos[fotoPrincipalIndex] || null;
+  const fotoPrincipalOptimized = useMemo(
+    () => getOptimizedImageUrl(fotoPrincipal, { width: 1200, quality: 80 }),
+    [fotoPrincipal]
+  );
+  const fotosThumbs = useMemo(
+    () => todasLasFotos.map((url) => getOptimizedImageUrl(url, { width: 300, quality: 60 })),
+    [todasLasFotos]
+  );
+  const fotosLightbox = useMemo(
+    () => todasLasFotos.map((url) => getOptimizedImageUrl(url, { width: 1600, quality: 80 })),
+    [todasLasFotos]
+  );
+
+  useEffect(() => {
+    setHeroLoaded(false);
+  }, [fotoPrincipalOptimized]);
+
+  useEffect(() => {
+    setThumbsLoaded(new Set());
+  }, [fotosThumbs]);
   
   // Debug
   useEffect(() => {
@@ -120,9 +145,9 @@ function ModeloDetalle() {
 
   // Precargar todas las imágenes cuando se abre el lightbox
   useEffect(() => {
-    if (lightboxOpen && todasLasFotos.length > 0) {
+    if (lightboxOpen && fotosLightbox.length > 0) {
       // Precargar todas las imágenes en segundo plano
-      todasLasFotos.forEach((url) => {
+      fotosLightbox.forEach((url) => {
         if (url && !preloadedImagesRef.current.has(url)) {
           const img = new Image();
           img.src = url;
@@ -130,14 +155,14 @@ function ModeloDetalle() {
         }
       });
     }
-  }, [lightboxOpen, todasLasFotos]);
+  }, [lightboxOpen, fotosLightbox]);
 
   // Precargar imágenes adyacentes cuando cambia el índice
   useEffect(() => {
-    if (lightboxOpen && todasLasFotos.length > 0) {
-      precargarImagenes(lightboxIndex, todasLasFotos);
+    if (lightboxOpen && fotosLightbox.length > 0) {
+      precargarImagenes(lightboxIndex, fotosLightbox);
     }
-  }, [lightboxIndex, lightboxOpen, todasLasFotos, precargarImagenes]);
+  }, [lightboxIndex, lightboxOpen, fotosLightbox, precargarImagenes]);
 
   const cambiarFotoPrincipal = useCallback((index) => {
     if (index >= 0 && index < todasLasFotos.length) {
@@ -206,6 +231,16 @@ function ModeloDetalle() {
       cerrarLightbox();
     }
   }, [cerrarLightbox]);
+
+  const markThumbLoaded = useCallback((url) => {
+    if (!url) return;
+    setThumbsLoaded((prev) => {
+      if (prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -291,12 +326,27 @@ function ModeloDetalle() {
         {/* Hero Section */}
         <section className="hero-section">
           <div className="hero-content-wrapper">
-            {fotoPrincipal ? (
+            {fotoPrincipalOptimized ? (
               <div
-                className="hero-photo-large"
-                style={{ backgroundImage: `url('${fotoPrincipal}')` }}
+                className={`hero-photo-large ${heroLoaded ? 'is-loaded' : 'is-loading'}`}
                 onClick={abrirLightboxDesdePrincipal}
-              />
+              >
+                <img
+                  src={fotoPrincipalOptimized}
+                  alt={`Foto principal de ${modelo.nombre || 'modelo'}`}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  onLoad={() => setHeroLoaded(true)}
+                  onError={(e) => {
+                    setHeroLoaded(true);
+                    if (!fotoPrincipal) return;
+                    if (e.currentTarget.dataset.fallbackApplied) return;
+                    e.currentTarget.dataset.fallbackApplied = 'true';
+                    e.currentTarget.src = fotoPrincipal;
+                  }}
+                />
+              </div>
             ) : (
               <div className="hero-photo-large placeholder">
                 <span>📷</span>
@@ -375,16 +425,34 @@ function ModeloDetalle() {
           <section className="fotos-section">
             <h2>Galería de Fotos</h2>
             <div className="fotos-grid">
-              {todasLasFotos.map((foto, index) => (
-                <div
+              {todasLasFotos.map((foto, index) => {
+                const thumbUrl = fotosThumbs[index] || foto;
+                return (
+                <button
                   key={index}
-                  className={`foto-miniatura ${index === fotoPrincipalIndex ? 'active' : ''}`}
-                  style={{ backgroundImage: `url('${foto}')` }}
+                  type="button"
+                  className={`foto-miniatura ${index === fotoPrincipalIndex ? 'active' : ''} ${thumbsLoaded.has(thumbUrl) ? 'is-loaded' : 'is-loading'}`}
                   onClick={() => cambiarFotoPrincipal(index)}
                   onDoubleClick={() => abrirLightbox(index)}
                   title="Click para cambiar foto principal, doble click para ver en grande"
-                />
-              ))}
+                >
+                  <img
+                    src={thumbUrl}
+                    alt={`Miniatura ${index + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    onLoad={() => markThumbLoaded(thumbUrl)}
+                    onError={(e) => {
+                      markThumbLoaded(thumbUrl);
+                      if (!foto) return;
+                      if (e.currentTarget.dataset.fallbackApplied) return;
+                      e.currentTarget.dataset.fallbackApplied = 'true';
+                      e.currentTarget.src = foto;
+                    }}
+                  />
+                </button>
+                );
+              })}
             </div>
           </section>
         )}
@@ -432,11 +500,18 @@ function ModeloDetalle() {
             <div className="lightbox-content">
               <img
                 id="lightboxImage"
-                src={todasLasFotos[lightboxIndex]}
+                src={fotosLightbox[lightboxIndex] || todasLasFotos[lightboxIndex]}
                 alt="Foto del modelo"
                 className={`lightbox-img ${isZoomed ? 'zoomed' : ''}`}
                 onClick={toggleZoom}
                 loading="eager"
+                onError={(e) => {
+                  const fallback = todasLasFotos[lightboxIndex];
+                  if (!fallback) return;
+                  if (e.currentTarget.dataset.fallbackApplied) return;
+                  e.currentTarget.dataset.fallbackApplied = 'true';
+                  e.currentTarget.src = fallback;
+                }}
                 style={{
                   cursor: isZoomed ? 'zoom-out' : 'zoom-in',
                   transform: isZoomed ? 'scale(2)' : 'scale(1)',
@@ -454,7 +529,7 @@ function ModeloDetalle() {
                 {todasLasFotos.map((foto, i) => (
                   <LightboxThumbnail
                     key={i}
-                    foto={foto}
+                    foto={fotosThumbs[i] || foto}
                     index={i}
                     isActive={i === lightboxIndex}
                     onClick={() => cambiarFotoLightbox(i)}

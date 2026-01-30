@@ -3,6 +3,7 @@ const QRCode = require('qrcode');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const jwt = require('jsonwebtoken');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -83,6 +84,7 @@ function getImageExtension(filename, mimeType) {
 }
 
 // Middleware
+app.use(compression());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -207,6 +209,12 @@ function getBaseUrl(req) {
   const host = (req.headers['x-forwarded-host'] || req.get('host') || '').toString().split(',')[0].trim();
   if (!host) return '';
   return `${proto}://${host}`;
+}
+
+function setPublicCache(res, maxAgeSeconds = 60, swrSeconds = 300) {
+  const maxAge = Math.max(0, Number(maxAgeSeconds) || 0);
+  const swr = Math.max(0, Number(swrSeconds) || 0);
+  res.set('Cache-Control', `public, max-age=${maxAge}, stale-while-revalidate=${swr}`);
 }
 
 function auditLogSafe(req, entry) {
@@ -885,10 +893,24 @@ app.get('/api/logout', (req, res) => {
 app.get('/api/modelos', async (req, res) => {
   try {
     const modelos = await modelosDB.getAll();
-    
+    const modeloIds = modelos.map((m) => m.id).filter(Boolean);
+    let fotosByModelo = new Map();
+
+    if (modeloIds.length > 0 && modeloFotosDB && typeof modeloFotosDB.getByModeloIds === 'function') {
+      const fotos = await modeloFotosDB.getByModeloIds(modeloIds);
+      fotosByModelo = fotos.reduce((acc, foto) => {
+        const key = foto.modelo_id;
+        if (!acc.has(key)) acc.set(key, []);
+        acc.get(key).push(foto);
+        return acc;
+      }, new Map());
+    }
+
     // Agregar primera foto de cada modelo (para compatibilidad)
     for (let modelo of modelos) {
-      const fotos = (await modeloFotosDB.getByModeloId(modelo.id)) || [];
+      const fotos = fotosByModelo.size
+        ? (fotosByModelo.get(modelo.id) || [])
+        : (await modeloFotosDB.getByModeloId(modelo.id)) || [];
       modelo.fotos = fotos;
       // Mantener compatibilidad: si hay fotos pero no hay foto principal, usar la primera
       if (!modelo.foto && fotos.length > 0) {
@@ -896,6 +918,7 @@ app.get('/api/modelos', async (req, res) => {
       }
     }
     
+    setPublicCache(res, 60, 300);
     res.json({ success: true, modelos: modelos || [] });
   } catch (error) {
     console.error('Error obteniendo modelos:', error);
@@ -941,6 +964,7 @@ app.get('/api/modelos/:id', async (req, res) => {
     const fotos = await modeloFotosDB.getByModeloId(modeloId);
     modelo.fotos = fotos || [];
     
+    setPublicCache(res, 60, 300);
     res.json({ success: true, modelo });
   } catch (error) {
     console.error('Error obteniendo modelo:', error);
@@ -970,9 +994,24 @@ app.get('/api/admin/modelos', requireAuth, async (req, res) => {
     const modelos = Array.isArray(result) ? result : (result?.rows || []);
     const total = Array.isArray(result) ? modelos.length : (result?.total ?? modelos.length);
     
+    const modeloIds = modelos.map((m) => m.id).filter(Boolean);
+    let fotosByModelo = new Map();
+
+    if (modeloIds.length > 0 && modeloFotosDB && typeof modeloFotosDB.getByModeloIds === 'function') {
+      const fotos = await modeloFotosDB.getByModeloIds(modeloIds);
+      fotosByModelo = fotos.reduce((acc, foto) => {
+        const key = foto.modelo_id;
+        if (!acc.has(key)) acc.set(key, []);
+        acc.get(key).push(foto);
+        return acc;
+      }, new Map());
+    }
+
     // Agregar fotos a cada modelo
     for (let modelo of modelos) {
-      const fotos = await modeloFotosDB.getByModeloId(modelo.id);
+      const fotos = fotosByModelo.size
+        ? (fotosByModelo.get(modelo.id) || [])
+        : await modeloFotosDB.getByModeloId(modelo.id);
       modelo.fotos = fotos || [];
     }
     
