@@ -1,4 +1,4 @@
-# 🔍 Diagnóstico: imágenes cargan lento
+# 🔍 Diagnóstico: imágenes cargan lento,
 
 Guía práctica para diagnosticar por qué las imágenes de la galería y del lightbox tardan en cargar.
 
